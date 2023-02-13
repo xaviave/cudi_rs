@@ -5,8 +5,36 @@
 CUDI is for Custom Diaporama. 
 This app is a display of the world, it will show you images with a particular aesthetic to keep your attention on the screen.
 ___
-### To do
+## To do
 
+___
+### Steps
+
+1. Simple OpenGL engine in Rust:
+    - Open a window with some images shown
+    - Handle the high volume of local image to download per-second 
+    - Handle the sound
+    - Handle video on screen
+2. Options and customisations of the engine:
+    - Custom parameter to control the engine
+        - FPS
+        - Filter
+        - Mode (Cinema/Background)
+        - Media path selector
+        - Tags (WIP)
+        - Animations
+    - Show Music player
+    - Show Music analysis window
+    - Media history (like/dislike) -> search engine
+3. External API (real-time data acquisition):
+    - Download photos or videos from API such as Archillect, Tumblr ou Google Photos
+    - Handle the Deezer or Youtube API to play music
+4. ML everywhere:
+    - Add auto tagging image/video with themes/colors
+    - Add music tagging with themes/styles and BPM selector
+    - Adapt music and image/video BPM and tags
+
+___
 ##### Image selector
 
 - create a database to stock the link of the image
@@ -41,30 +69,3 @@ Animation could be add to the screen:
 - Images in line on the top of the screen, a slow dark wallscreen animation will be always display. Those images will describe a type of sound (frequencies). When this type will appear in a music the corresponding image will grow then retake is place. All the sounds will create a nearly chaotic and unique animation for each music.
 
 *car chase, illegal japanese drift, race (boat, bike, car, plane, spaceship)
-
-___
-### Steps
-
-1. Simple OpenGL engine in Rust:
-    - Open a window with some images shown
-    - Handle the high volume of local image to download per-second 
-    - Handle the sound
-    - Handle video on screen
-2. Options and customisations of the engine:
-    - Custom parameter to control the engine
-        - FPS
-        - Filter
-        - Mode (Cinema/Background)
-        - Media path selector
-        - Tags (WIP)
-        - Animations
-    - Show Music player
-    - Show Music analysis window
-    - Media history (like/dislike) -> search engine
-3. External API (real-time data acquisition):
-    - Download photos or videos from API such as Archillect, Tumblr ou Google Photos
-    - Handle the Deezer or Youtube API to play music
-4. ML everywhere:
-    - Add auto tagging image/video with themes/colors
-    - Add music tagging with themes/styles and BPM selector
-    - Adapt music and image/video BPM and tags
