@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+#[derive(Debug)]
 pub struct MediaConfig {
     pub fps: u8,
     pub data_folder: PathBuf,

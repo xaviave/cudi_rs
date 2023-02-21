@@ -24,13 +24,8 @@ struct Image {
 
 impl Image {
     fn new(p: PathBuf) -> Image {
-        match p.try_exists() {
-            Ok(_) => {
-                let data = image::open(&p).unwrap();
-                Image { path: p, data }
-            }
-            Err(_) => panic!("File: {:?} doesn't exist", p.as_path()),
-        }
+        let data = image::open(&p).unwrap();
+        Image { path: p, data }
     }
 }
 
@@ -38,13 +33,9 @@ fn main() {
     let cli = Cli::parse();
     let cfg = MediaConfig::new(cli.fps, cli.data_folder);
 
-    let media_handler = MediaHandler::new(cfg);
-    println!(
-        "fps: {:?} | folder path {:?}",
-        media_handler.config.fps, media_handler.config.data_folder
-    );
+    let mut media_handler = MediaHandler::new(cfg);
 
-    let img = Image::new(media_handler.config.data_folder.join("img.jpg"));
+    let img = Image::new(media_handler.get_next_media());
     println!(
         "File description:\npath: {:?}\nsize: {:?}",
         img.path,
