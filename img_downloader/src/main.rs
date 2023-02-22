@@ -17,15 +17,15 @@ struct Cli {
     data_folder: Option<String>,
 }
 
-struct Image {
+pub struct Frame {
     path: PathBuf,
-    data: DynamicImage,
+    pub data: DynamicImage,
 }
 
-impl Image {
-    fn new(p: PathBuf) -> Image {
+impl Frame {
+    fn new(p: PathBuf) -> Self {
         let data = image::open(&p).unwrap();
-        Image { path: p, data }
+        Self { path: p, data }
     }
 }
 
@@ -35,7 +35,7 @@ fn main() {
 
     let mut media_handler = MediaHandler::new(cfg);
 
-    let img = Image::new(media_handler.get_next_media());
+    let img = Frame::new(media_handler.get_next_media());
     println!(
         "File description:\npath: {:?}\nsize: {:?}",
         img.path,

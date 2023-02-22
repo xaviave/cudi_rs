@@ -25,7 +25,7 @@ ___
         - Animations
     - Show Music player
     - Show Music analysis window
-    - Media history (like/dislike) -> search engine
+    - Media history (like/dislike) -> search engine w/ postgresql
 3. External API (real-time data acquisition):
     - Download photos or videos from API such as Archillect, Tumblr ou Google Photos
     - Handle the Deezer or Youtube API to play music
