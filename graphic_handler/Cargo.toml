@@ -1,0 +1,11 @@
+[package]
+name = "graphic_handler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = "0.8"
+iced = "0.7.0"
+iced_glow = "0.6.0"
+iced_glutin = "0.6.0"
+iced_winit = "0.7.0"
