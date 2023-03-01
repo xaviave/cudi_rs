@@ -11,12 +11,6 @@ also for video, gif or image for the next_media iterator
 https://rust-unofficial.github.io/patterns/patterns/behavioural/strategy.html
  */
 
-fn vector_to_shuffle_iter(mut x: Vec<PathBuf>) -> Box<dyn Iterator<Item = PathBuf>> {
-    let mut rng = thread_rng();
-    x.shuffle(&mut rng);
-    Box::new(x.into_iter())
-}
-
 // #[derive(Debug)]
 pub struct MediaHandler {
     pub config: MediaConfig,
@@ -25,6 +19,11 @@ pub struct MediaHandler {
 }
 
 impl MediaHandler {
+    fn vector_to_shuffle_iter(mut x: Vec<PathBuf>) -> Box<dyn Iterator<Item = PathBuf>> {
+        let mut rng = thread_rng();
+        x.shuffle(&mut rng);
+        Box::new(x.into_iter())
+    }
     pub fn new(config: MediaConfig) -> Self {
         let ml: Vec<PathBuf> = fs::read_dir(&config.data_folder)
             .unwrap()
@@ -33,7 +32,7 @@ impl MediaHandler {
         MediaHandler {
             config,
             media_list: ml.clone(),
-            media_iter: vector_to_shuffle_iter(ml),
+            media_iter: Self::vector_to_shuffle_iter(ml),
         }
     }
 
@@ -41,7 +40,7 @@ impl MediaHandler {
         match self.media_iter.next() {
             Some(media) => media,
             None => {
-                self.media_iter = vector_to_shuffle_iter(self.media_list.clone());
+                self.media_iter = Self::vector_to_shuffle_iter(self.media_list.clone());
                 self.get_next_media()
             }
         }

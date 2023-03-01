@@ -1,9 +1,9 @@
 use clap::Parser;
 use graphic_handler::graphic_config::GraphicConfig;
 use graphic_handler::GraphicContext;
-use media_handler::Frame;
 use media_handler::media_config::MediaConfig;
 use media_handler::media_handler::MediaHandler;
+use media_handler::Frame;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -22,7 +22,14 @@ fn main() {
     let img = Frame::new(media_handler.get_next_media());
     img.print_debug();
 
-    let graphic_config = GraphicConfig::new(500, 500, "CUDI", "Running panorama");
+    let graphic_config = GraphicConfig::new(
+        500,
+        500,
+        "CUDI",
+        "Running panorama",
+        "graphic_handler/shaders/default.vs",
+        "graphic_handler/shaders/default.fs",
+    );
     let g = GraphicContext::new(graphic_config);
     g.launch_graphic();
 }

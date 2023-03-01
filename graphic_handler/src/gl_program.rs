@@ -1,14 +1,23 @@
+use std::fs;
+use std::path::PathBuf;
+
 use glow::*;
 use iced_glow::glow;
 use iced_glow::Color;
 
-pub struct Scene {
+pub struct GlProgram {
     program: glow::Program,
     vertex_array: glow::VertexArray,
 }
 
-impl Scene {
-    pub fn new(gl: &glow::Context, shader_version: &str) -> Self {
+impl GlProgram {
+    fn get_shader_from_file(shader_path: PathBuf) -> String {
+        fs::read_to_string(shader_path).expect("Unable to read file")
+    }
+
+    pub fn new(gl: &glow::Context, vertex_path: &PathBuf, fragment_path: &PathBuf) -> Self {
+        let shader_version = "#version 410";
+
         unsafe {
             let vertex_array = gl
                 .create_vertex_array()
@@ -17,28 +26,34 @@ impl Scene {
 
             let program = gl.create_program().expect("Cannot create program");
 
-            let (vertex_shader_source, fragment_shader_source) = (
-                r#"const vec2 verts[3] = vec2[3](
-                    vec2(0.5f, 1.0f),
-                    vec2(0.0f, 0.0f),
-                    vec2(1.0f, 0.0f)
-                );
-                out vec2 vert;
-                void main() {
-                    vert = verts[gl_VertexID];
-                    gl_Position = vec4(vert - 0.5, 0.0, 1.0);
-                }"#,
-                r#"precision highp float;
-                in vec2 vert;
-                out vec4 color;
-                void main() {
-                    color = vec4(vert, 0.5, 1.0);
-                }"#,
-            );
+            // let (vertex_shader_source, fragment_shader_source) = (
+            //     r#"const vec2 verts[3] = vec2[3](
+            //         vec2(0.5f, 1.0f),
+            //         vec2(0.0f, 0.0f),
+            //         vec2(1.0f, 0.0f)
+            //     );
+            //     out vec2 vert;
+            //     void main() {
+            //         vert = verts[gl_VertexID];
+            //         gl_Position = vec4(vert - 0.5, 0.0, 1.0);
+            //     }"#,
+            //     r#"precision highp float;
+            //     in vec2 vert;
+            //     out vec4 color;
+            //     void main() {
+            //         color = vec4(vert, 0.5, 1.0);
+            //     }"#,
+            // );
 
             let shader_sources = [
-                (glow::VERTEX_SHADER, vertex_shader_source),
-                (glow::FRAGMENT_SHADER, fragment_shader_source),
+                (
+                    glow::VERTEX_SHADER,
+                    Self::get_shader_from_file(vertex_path.to_path_buf()),
+                ),
+                (
+                    glow::FRAGMENT_SHADER,
+                    Self::get_shader_from_file(fragment_path.to_path_buf()),
+                ),
             ];
 
             let mut shaders = Vec::with_capacity(shader_sources.len());
@@ -47,10 +62,7 @@ impl Scene {
                 let shader = gl
                     .create_shader(*shader_type)
                     .expect("Cannot create shader");
-                gl.shader_source(
-                    shader,
-                    &format!("{shader_version}\n{shader_source}"),
-                );
+                gl.shader_source(shader, &format!("{shader_version}\n{shader_source}"));
                 gl.compile_shader(shader);
                 if !gl.get_shader_compile_status(shader) {
                     panic!("{}", gl.get_shader_info_log(shader));

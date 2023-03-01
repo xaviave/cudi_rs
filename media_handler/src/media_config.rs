@@ -30,15 +30,18 @@ impl MediaConfig {
         let path = PathBuf::from(p);
         match path.try_exists() {
             Ok(_) => path,
-            Err(_) => panic!("Folder doesn;t exist. Check folder path or use default."),
+            Err(_) => panic!("Folder doesn't exist. Check folder path or use default."),
         }
     }
 
     pub fn new(fps: u8, df: Option<String>) -> Self {
+        /*
+        Could add an option to get all args from a config file or environ
+        */
         let data_folder = match df {
             Some(p) => Self::folder_exist(&p),
             None => Self::create_default_folder(),
         };
-        MediaConfig { fps, data_folder }
+        Self { fps, data_folder }
     }
 }

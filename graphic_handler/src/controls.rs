@@ -84,10 +84,7 @@ impl Program for Controls {
                         Column::new()
                             .padding(10)
                             .spacing(10)
-                            .push(
-                                Text::new("Background color")
-                                    .style(Color::WHITE),
-                            )
+                            .push(Text::new("Background color").style(Color::WHITE))
                             .push(sliders)
                             .push(
                                 Text::new(format!("{background_color:?}"))
