@@ -1,8 +1,10 @@
 mod controls;
 mod scene;
+pub mod graphic_config;
 
-use controls::Controls;
 use scene::Scene;
+use controls::Controls;
+use graphic_config::GraphicConfig;
 
 use glow::*;
 use glutin::dpi::PhysicalPosition;
@@ -14,22 +16,29 @@ use iced_glutin::conversion;
 use iced_glutin::glutin::{self, ContextWrapper};
 use iced_glutin::renderer;
 use iced_glutin::{program, Clipboard, Color, Debug, Size};
+use iced_glutin::program::State;
 
+pub struct GraphicContext {
+	config: GraphicConfig,
 
-struct GraphicContext<T, W, P>{
 	gl: Context,
-	event_loop: glutin::event_loop::EventLoop<T>,
-	cursor_position: PhysicalPosition<P>,
-	modifiers: ModifiersState,
-	clipboard: ModifiersState,
-	debug:Debug,
-	renderer: Renderer,
-	reseized: bool,
+	windowed_context: ContextWrapper<glutin::PossiblyCurrent, glutin::window::Window>,
+	event_loop: glutin::event_loop::EventLoop<()>,
+
+    viewport: Viewport,
 	scene:Scene,
-	windowed_context: ContextWrapper<T, W>,
+	renderer: Renderer,
+
+    state: State<Controls>,
+	cursor_position: PhysicalPosition<f64>,
+	modifiers: ModifiersState,
+	clipboard: Clipboard,
+	resized: bool,
+	debug:Debug,
 }
-impl GraphicContext<T, W, P> {
-	pub fn new() -> Self {
+
+impl GraphicContext {
+	pub fn new(config: GraphicConfig) -> Self {
 		env_logger::init();
 
 		let shader_version = "#version 410";
@@ -37,8 +46,8 @@ impl GraphicContext<T, W, P> {
 
 		let (gl, windowed_context) = {
 			let wb = glutin::window::WindowBuilder::new()
-				.with_title("CUDI")
-				.with_inner_size(glutin::dpi::LogicalSize::new(1024.0, 768.0));
+				.with_title(&config.app_name)
+				.with_inner_size(glutin::dpi::LogicalSize::new(config.width, config.height));
 
 			let windowed_context = glutin::ContextBuilder::new()
 				.with_vsync(true)
@@ -67,30 +76,26 @@ impl GraphicContext<T, W, P> {
 		};
 
 		let physical_size = windowed_context.window().inner_size();
-		let mut viewport = Viewport::with_physical_size(
+		let viewport = Viewport::with_physical_size(
 			Size::new(physical_size.width, physical_size.height),
 			windowed_context.window().scale_factor(),
 		);
 
-		let mut cursor_position = PhysicalPosition::new(-1.0, -1.0);
-		let mut modifiers = ModifiersState::default();
-		let mut clipboard = Clipboard::connect(windowed_context.window());
-
-		let mut renderer = Renderer::new(Backend::new(&gl, Settings::default()));
 
 		let mut debug = Debug::new();
-
 		let controls = Controls::new();
-		let mut state =
-			program::State::new(controls, viewport.logical_size(), &mut renderer, &mut debug);
-		let mut resized = false;
-
+		let modifiers = ModifiersState::default();
 		let scene = Scene::new(&gl, shader_version);
-		Self { gl, event_loop, cursor_position, modifiers, clipboard, renderer, scene,windowed_context, reseized}
+		let cursor_position = PhysicalPosition::new(-1.0, -1.0);
+		let clipboard = Clipboard::connect(windowed_context.window());
+		let mut renderer = Renderer::new(Backend::new(&gl, Settings::default()));
+		let state = program::State::new(controls, viewport.logical_size(), &mut renderer, &mut debug);
+
+		Self { config, gl, windowed_context, event_loop, viewport, scene,renderer, state, cursor_position, modifiers, clipboard, resized: false, debug }
 	}
 
 
-	fn launch_graphic(&self) {
+	pub fn launch_graphic(mut self) {
 		self.event_loop.run(move |event, _, control_flow| {
 			*control_flow = ControlFlow::Wait;
 

@@ -1,7 +1,6 @@
 pub mod media_config;
 pub mod media_handler;
 
-use image;
 use image::DynamicImage;
 use image::GenericImageView;
 use std::path::PathBuf;
