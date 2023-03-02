@@ -182,7 +182,7 @@ impl GraphicContext {
                     let program = self.state.program();
                     {
                         // We clear the frame
-                        self.program.clear(&self.gl, program.background_color());
+                        self.program.clear(&self.gl, program.background_color);
 
                         // Draw the scene
                         self.program.draw(&self.gl);
@@ -198,6 +198,7 @@ impl GraphicContext {
                         iced_winit::conversion::mouse_interaction(self.state.mouse_interaction()),
                     );
 
+					program.refresh += 1;
                     self.windowed_context.swap_buffers().unwrap();
                 }
                 _ => (),

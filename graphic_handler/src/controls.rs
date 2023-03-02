@@ -4,7 +4,8 @@ use iced_glutin::widget::{Column, Row, Text};
 use iced_glutin::{Alignment, Color, Command, Element, Length, Program};
 
 pub struct Controls {
-    background_color: Color,
+    pub refresh: u8,
+    pub background_color: Color,
 }
 
 #[derive(Debug, Clone)]
@@ -15,12 +16,9 @@ pub enum Message {
 impl Controls {
     pub fn new() -> Controls {
         Controls {
+            refresh: 0,
             background_color: Color::BLACK,
         }
-    }
-
-    pub fn background_color(&self) -> Color {
-        self.background_color
     }
 }
 
