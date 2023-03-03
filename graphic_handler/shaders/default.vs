@@ -4,9 +4,10 @@ const vec2 verts[3] = vec2[3](
     vec2(1.0f, 0.0f)
 );
 
-out vec2 vert;
+layout (location = 0) in vec3 aPos;
 
+out vec2 vert;
 void main() {
     vert = verts[gl_VertexID];
-    gl_Position = vec4(vert - 0.5, 0.0, 1.0);
+    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
 }

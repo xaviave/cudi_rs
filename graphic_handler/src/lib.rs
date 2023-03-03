@@ -2,6 +2,8 @@ mod controls;
 mod gl_program;
 pub mod graphic_config;
 
+use std::time::Instant;
+
 use controls::Controls;
 use gl_program::GlProgram;
 use graphic_config::GraphicConfig;
@@ -108,8 +110,17 @@ impl GraphicContext {
     }
 
     pub fn launch_graphic(mut self) {
+        // let mut timer = Instant::now();
+
         self.event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
+
+            // little fps counter
+            // let x = timer.elapsed().as_millis();
+            // if x > 0 {
+            //     println!("{:?}", 1000 / x);
+            // }
+            // timer = Instant::now();
 
             match event {
                 Event::WindowEvent { event, .. } => {
@@ -175,19 +186,16 @@ impl GraphicContext {
                             self.gl
                                 .viewport(0, 0, size.width as i32, size.height as i32);
                         }
-
                         self.resized = false;
                     }
 
-                    let program = self.state.program();
+                    let control = self.state.program();
                     {
                         // We clear the frame
-                        self.program.clear(&self.gl, program.background_color);
-
+                        self.program.clear(&self.gl, control.background_color);
                         // Draw the scene
                         self.program.draw(&self.gl);
                     }
-
                     // And then iced on top
                     self.renderer.with_primitives(|backend, primitive| {
                         backend.present(&self.gl, primitive, &self.viewport, &self.debug.overlay());
@@ -197,8 +205,6 @@ impl GraphicContext {
                     self.windowed_context.window().set_cursor_icon(
                         iced_winit::conversion::mouse_interaction(self.state.mouse_interaction()),
                     );
-
-					program.refresh += 1;
                     self.windowed_context.swap_buffers().unwrap();
                 }
                 _ => (),
