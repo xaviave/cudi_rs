@@ -85,7 +85,12 @@ impl GraphicContext {
         let mut debug = Debug::new();
         let controls = Controls::new();
         let modifiers = ModifiersState::default();
-        let program = GlProgram::new(&gl, &config.vertex_path, &config.fragment_path);
+        let program = GlProgram::new(
+            &gl,
+            &config.vertex_path,
+            &config.fragment_path,
+            &config.loading_media,
+        );
         let cursor_position = PhysicalPosition::new(-1.0, -1.0);
         let clipboard = Clipboard::connect(windowed_context.window());
         let mut renderer = Renderer::new(Backend::new(&gl, Settings::default()));

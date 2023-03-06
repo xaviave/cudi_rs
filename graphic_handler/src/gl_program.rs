@@ -5,12 +5,14 @@ use std::path::PathBuf;
 use glow::*;
 use iced_glow::glow;
 use iced_glow::Color;
+use media_handler::Frame;
 
 pub struct GlProgram {
     program: glow::Program,
     vao: glow::VertexArray,
     vbo: NativeBuffer,
     ebo: NativeBuffer,
+    texture: NativeTexture,
 }
 
 impl GlProgram {
@@ -59,7 +61,12 @@ impl GlProgram {
         shaders
     }
 
-    pub fn new(gl: &glow::Context, vertex_path: &PathBuf, fragment_path: &PathBuf) -> Self {
+    pub fn new(
+        gl: &glow::Context,
+        vertex_path: &PathBuf,
+        fragment_path: &PathBuf,
+        loading_media: &Frame,
+    ) -> Self {
         let vertices: [f32; 32] = [
             // positions          // colors           // texture coords
             0.5, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, // top right
@@ -126,12 +133,28 @@ impl GlProgram {
                 gl.delete_shader(shader);
             }
 
+            let texture = gl.create_texture().unwrap();
+            gl.bind_texture(TEXTURE_2D, Some(texture));
+
+            gl.tex_image_2d(
+                TEXTURE_2D,
+                0,
+                RGBA as i32,
+                loading_media.width as i32,
+                loading_media.height as i32,
+                0,
+                RGBA,
+                UNSIGNED_BYTE,
+                Some(&loading_media.get_raw_image()),
+            );
+            gl.generate_mipmap(TEXTURE_2D);
             gl.use_program(Some(program));
             Self {
                 program,
                 vao,
                 vbo,
                 ebo,
+                texture,
             }
         }
     }
@@ -157,6 +180,8 @@ impl GlProgram {
         ];
         unsafe {
             gl.bind_vertex_array(Some(self.vao));
+            gl.bind_texture(TEXTURE_2D, Some(self.texture));
+
             gl.use_program(Some(self.program));
             gl.draw_elements(glow::TRIANGLES, indices.len() as i32, glow::UNSIGNED_INT, 0);
             gl.bind_vertex_array(None);

@@ -9,3 +9,4 @@ iced = "0.7.0"
 iced_glow = "0.6.0"
 iced_glutin = "0.6.0"
 iced_winit = "0.7.0"
+media_handler = { path = "../media_handler" }

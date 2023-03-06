@@ -23,9 +23,10 @@ fn main() {
     img.print_debug();
 
     let graphic_config = GraphicConfig::new(
-        500,
-        500,
+        1000,
+        1000,
         "CUDI",
+        "data/init/loading.jpg",
         "Running panorama",
         "graphic_handler/shaders/default.vs",
         "graphic_handler/shaders/default.fs",
