@@ -1,8 +1,10 @@
 use crate::media_config::MediaConfig;
+use crate::Frame;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::fs;
 use std::path::PathBuf;
+use std::time::Instant;
 
 /*
 Add a strategy with a trait to handle different API or local downlloading
@@ -28,6 +30,7 @@ impl MediaHandler {
         let ml: Vec<PathBuf> = fs::read_dir(&config.data_folder)
             .unwrap()
             .map(|p| p.unwrap().path())
+            .filter(|f| f.is_file())
             .collect();
         MediaHandler {
             config,
@@ -36,9 +39,14 @@ impl MediaHandler {
         }
     }
 
-    pub fn get_next_media(&mut self) -> PathBuf {
+    pub fn get_next_media(&mut self) -> Frame {
         match self.media_iter.next() {
-            Some(media) => media,
+            Some(media) => {
+                let timer = Instant::now();
+                let f = Frame::new(media);
+                println!("LOG: opening image time: {:?}", timer.elapsed().as_millis());
+                f
+            }
             None => {
                 self.media_iter = Self::vector_to_shuffle_iter(self.media_list.clone());
                 self.get_next_media()

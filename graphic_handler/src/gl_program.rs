@@ -67,16 +67,22 @@ impl GlProgram {
         fragment_path: &PathBuf,
         loading_media: &Frame,
     ) -> Self {
+        // Vertex buffer attributes
+        let mut offset = 0;
+        let sizes = [3, 3, 2];
+        let size_f32 = size_of::<f32>() as i32;
+        let stride = sizes.iter().sum::<i32>() * size_f32;
+
+        let indices: [i32; 6] = [
+            0, 1, 3, // first Triangle
+            1, 2, 3, // second Triangle
+        ];
         let vertices: [f32; 32] = [
             // positions          // colors           // texture coords
             0.5, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, // top right
             0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, // bottom right
             -0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, // bottom left
             -0.5, 0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, // top left
-        ];
-        let indices: [i32; 6] = [
-            0, 1, 3, // first Triangle
-            1, 2, 3, // second Triangle
         ];
         // https://github.com/willcrichton/learn-opengl-rust
 
@@ -98,13 +104,6 @@ impl GlProgram {
             let (_, vertices_bytes, _) = vertices.align_to::<u8>();
             gl.bind_buffer(ARRAY_BUFFER, Some(vbo));
             gl.buffer_data_u8_slice(ARRAY_BUFFER, vertices_bytes, STATIC_DRAW);
-
-            let mut offset = 0;
-
-            // Vertex buffer attributes
-            let size_f32 = size_of::<f32>() as i32;
-            let sizes = [3, 3, 2];
-            let stride = sizes.iter().sum::<i32>() * size_f32;
 
             for (i, size) in sizes.iter().enumerate() {
                 gl.enable_vertex_attrib_array(i as u32);
@@ -165,34 +164,50 @@ impl GlProgram {
         gl.uniform_1_f32(uniform_location.as_ref(), value)
     }
 
-    pub fn clear(&self, gl: &glow::Context, background_color: Color) {
+    pub unsafe fn clear(&self, gl: &glow::Context, background_color: Color) {
         let [r, g, b, a] = background_color.into_linear();
-        unsafe {
-            gl.clear_color(r, g, b, a);
-            gl.clear(glow::COLOR_BUFFER_BIT);
-        }
+        gl.clear_color(r, g, b, a);
+        gl.clear(glow::COLOR_BUFFER_BIT);
     }
 
-    pub fn draw(&self, gl: &glow::Context) {
+    unsafe fn generate_texture(&self, gl: &glow::Context, media: &Frame) {
+        // let t = gl.create_texture().expect("Error while creating texture");
+        gl.bind_texture(TEXTURE_2D, Some(self.texture));
+
+        gl.tex_image_2d(
+            TEXTURE_2D,
+            0,
+            RGBA as i32,
+            media.width as i32,
+            media.height as i32,
+            0,
+            RGBA,
+            UNSIGNED_BYTE,
+            Some(&media.get_raw_image()),
+        );
+        gl.generate_mipmap(TEXTURE_2D);
+    }
+
+    pub unsafe fn draw(&self, gl: &glow::Context, media: Option<&Frame>) {
         let indices: [i32; 6] = [
             0, 1, 3, // first Triangle
             1, 2, 3, // second Triangle
         ];
-        unsafe {
-            gl.bind_vertex_array(Some(self.vao));
-            gl.bind_texture(TEXTURE_2D, Some(self.texture));
-
-            gl.use_program(Some(self.program));
-            gl.draw_elements(glow::TRIANGLES, indices.len() as i32, glow::UNSIGNED_INT, 0);
-            gl.bind_vertex_array(None);
+        if let Some(m) = media {
+            self.generate_texture(gl, m);
         }
+        gl.bind_vertex_array(Some(self.vao));
+        gl.bind_texture(TEXTURE_2D, Some(self.texture));
+
+        gl.use_program(Some(self.program));
+        gl.draw_elements(glow::TRIANGLES, indices.len() as i32, glow::UNSIGNED_INT, 0);
+        gl.bind_vertex_array(None);
+        gl.bind_texture(TEXTURE_2D, None);
     }
 
-    pub fn cleanup(&self, gl: &glow::Context) {
-        unsafe {
-            gl.delete_program(self.program);
-            gl.delete_vertex_array(self.vao);
-            gl.delete_buffer(self.vbo)
-        }
+    pub unsafe fn cleanup(&self, gl: &glow::Context) {
+        gl.delete_program(self.program);
+        gl.delete_vertex_array(self.vao);
+        gl.delete_buffer(self.vbo)
     }
 }

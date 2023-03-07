@@ -2,7 +2,7 @@ mod controls;
 mod gl_program;
 pub mod graphic_config;
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use controls::Controls;
 use gl_program::GlProgram;
@@ -19,6 +19,7 @@ use iced_glutin::glutin::{self, ContextWrapper};
 use iced_glutin::program::State;
 use iced_glutin::renderer;
 use iced_glutin::{program, Clipboard, Color, Debug, Size};
+use media_handler::media_handler::MediaHandler;
 
 pub struct GraphicContext {
     config: GraphicConfig,
@@ -114,18 +115,9 @@ impl GraphicContext {
         }
     }
 
-    pub fn launch_graphic(mut self) {
-        // let mut timer = Instant::now();
-
+    pub fn launch_graphic(mut self, mut media_handler: MediaHandler) {
         self.event_loop.run(move |event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
-
-            // little fps counter
-            // let x = timer.elapsed().as_millis();
-            // if x > 0 {
-            //     println!("{:?}", 1000 / x);
-            // }
-            // timer = Instant::now();
+            *control_flow = ControlFlow::Poll;
 
             match event {
                 Event::WindowEvent { event, .. } => {
@@ -144,10 +136,10 @@ impl GraphicContext {
 
                             self.resized = true;
                         }
-                        WindowEvent::CloseRequested => {
+                        WindowEvent::CloseRequested => unsafe {
                             self.program.cleanup(&self.gl);
                             *control_flow = ControlFlow::Exit
-                        }
+                        },
                         _ => (),
                     }
 
@@ -195,11 +187,12 @@ impl GraphicContext {
                     }
 
                     let control = self.state.program();
-                    {
+                    unsafe {
                         // We clear the frame
                         self.program.clear(&self.gl, control.background_color);
                         // Draw the scene
-                        self.program.draw(&self.gl);
+                        self.program
+                            .draw(&self.gl, Some(&media_handler.get_next_media()));
                     }
                     // And then iced on top
                     self.renderer.with_primitives(|backend, primitive| {
