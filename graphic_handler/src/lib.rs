@@ -116,6 +116,9 @@ impl GraphicContext {
     }
 
     pub fn launch_graphic(mut self, mut media_handler: MediaHandler) {
+        let mut next_media = false;
+        let mut current_time = Instant::now();
+
         self.event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
 
@@ -155,8 +158,7 @@ impl GraphicContext {
                 Event::MainEventsCleared => {
                     // If there are events pending
                     if !self.state.is_queue_empty() {
-                        // We update iced
-                        let _ = self.state.update(
+                        self.state.update(
                             self.viewport.logical_size(),
                             conversion::cursor_position(
                                 self.cursor_position,
@@ -170,10 +172,13 @@ impl GraphicContext {
                             &mut self.clipboard,
                             &mut self.debug,
                         );
-
-                        // and request a redraw
-                        self.windowed_context.window().request_redraw();
                     }
+
+                    if current_time.elapsed().as_millis() > self.config.fps {
+                        current_time = Instant::now();
+                        next_media = true;
+                    }
+                    self.windowed_context.window().request_redraw();
                 }
                 Event::RedrawRequested(_) => {
                     if self.resized {
@@ -188,11 +193,17 @@ impl GraphicContext {
 
                     let control = self.state.program();
                     unsafe {
-                        // We clear the frame
+                        // clear and draw
                         self.program.clear(&self.gl, control.background_color);
-                        // Draw the scene
-                        self.program
-                            .draw(&self.gl, Some(&media_handler.get_next_media()));
+                        self.program.draw(
+                            &self.gl,
+                            if next_media {
+                                Some(media_handler.get_next_media())
+                            } else {
+                                None
+                            },
+                        );
+                        next_media = false;
                     }
                     // And then iced on top
                     self.renderer.with_primitives(|backend, primitive| {

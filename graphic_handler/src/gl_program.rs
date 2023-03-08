@@ -11,7 +11,6 @@ pub struct GlProgram {
     program: glow::Program,
     vao: glow::VertexArray,
     vbo: NativeBuffer,
-    ebo: NativeBuffer,
     texture: NativeTexture,
 }
 
@@ -152,7 +151,6 @@ impl GlProgram {
                 program,
                 vao,
                 vbo,
-                ebo,
                 texture,
             }
         }
@@ -188,13 +186,13 @@ impl GlProgram {
         gl.generate_mipmap(TEXTURE_2D);
     }
 
-    pub unsafe fn draw(&self, gl: &glow::Context, media: Option<&Frame>) {
+    pub unsafe fn draw(&self, gl: &glow::Context, media: Option<Frame>) {
         let indices: [i32; 6] = [
             0, 1, 3, // first Triangle
             1, 2, 3, // second Triangle
         ];
         if let Some(m) = media {
-            self.generate_texture(gl, m);
+            self.generate_texture(gl, &m);
         }
         gl.bind_vertex_array(Some(self.vao));
         gl.bind_texture(TEXTURE_2D, Some(self.texture));

@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct MediaConfig {
-    pub fps: u8,
     pub data_folder: PathBuf,
 }
 
@@ -34,7 +33,7 @@ impl MediaConfig {
         }
     }
 
-    pub fn new(fps: u8, df: Option<String>) -> Self {
+    pub fn new(df: Option<String>) -> Self {
         /*
         Could add an option to get all args from a config file or environ
         */
@@ -42,6 +41,6 @@ impl MediaConfig {
             Some(p) => Self::folder_exist(&p),
             None => Self::create_default_folder(),
         };
-        Self { fps, data_folder }
+        Self { data_folder }
     }
 }

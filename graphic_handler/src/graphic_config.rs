@@ -3,8 +3,10 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct GraphicConfig {
-    pub height: i32,
-    pub width: i32,
+    // u128 to work with Instant millis
+    pub fps: u128,
+    pub width: u32,
+    pub height: u32,
     pub app_name: String,
     pub window_name: String,
     pub loading_media: Frame,
@@ -22,8 +24,9 @@ impl GraphicConfig {
     }
 
     pub fn new(
-        height: i32,
-        width: i32,
+        fps: u128,
+        width: u32,
+        height: u32,
         app_name: &str,
         loading_media_path: &str,
         window_name: &str,
@@ -35,8 +38,9 @@ impl GraphicConfig {
             to set the window size
         */
         Self {
-            height,
+            fps: fps * 10,
             width,
+            height,
             app_name: String::from(app_name),
             window_name: String::from(window_name),
             loading_media: Frame::new(Self::file_exist(loading_media_path)),

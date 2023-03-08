@@ -1,10 +1,10 @@
-use crate::media_config::MediaConfig;
-use crate::Frame;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::fs;
 use std::path::PathBuf;
-use std::time::Instant;
+
+use crate::media_config::MediaConfig;
+use crate::Frame;
 
 /*
 Add a strategy with a trait to handle different API or local downlloading
@@ -41,12 +41,7 @@ impl MediaHandler {
 
     pub fn get_next_media(&mut self) -> Frame {
         match self.media_iter.next() {
-            Some(media) => {
-                let timer = Instant::now();
-                let f = Frame::new(media);
-                println!("LOG: opening image time: {:?}", timer.elapsed().as_millis());
-                f
-            }
+            Some(media) => Frame::new(media),
             None => {
                 self.media_iter = Self::vector_to_shuffle_iter(self.media_list.clone());
                 self.get_next_media()
