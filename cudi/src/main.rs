@@ -7,17 +7,16 @@ use media_handler::media_handler::MediaHandler;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    #[arg(default_value_t = 30)]
-    fps: u8,
     data_folder: Option<String>,
 }
 
 fn main() {
     let cli = Cli::parse();
-    let media_config = MediaConfig::new(cli.fps, cli.data_folder);
+    let media_config = MediaConfig::new(cli.data_folder);
     let media_handler = MediaHandler::new(media_config);
 
     let graphic_config = GraphicConfig::new(
+        25,
         100,
         100,
         "CUDI",
