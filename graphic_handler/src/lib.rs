@@ -116,6 +116,7 @@ impl GraphicContext {
     }
 
     pub fn launch_graphic(mut self, mut media_handler: MediaHandler) {
+        let mut need_clear: u8 = 0;
         let mut next_media = false;
         let mut current_time = Instant::now();
 
@@ -136,7 +137,7 @@ impl GraphicContext {
                                 Size::new(physical_size.width, physical_size.height),
                                 self.windowed_context.window().scale_factor(),
                             );
-
+                            need_clear = 2;
                             self.resized = true;
                         }
                         WindowEvent::CloseRequested => unsafe {
@@ -189,12 +190,15 @@ impl GraphicContext {
                                 .viewport(0, 0, size.width as i32, size.height as i32);
                         }
                         self.resized = false;
+                        need_clear = 2;
                     }
 
                     let control = self.state.program();
                     unsafe {
-                        // clear and draw
-                        self.program.clear(&self.gl, control.background_color);
+                        // double buffer need 2 clear
+                        if need_clear > 0 {
+                            self.program.clear(&self.gl, control.background_color);
+                        }
                         self.program.draw(
                             &self.gl,
                             if next_media {
