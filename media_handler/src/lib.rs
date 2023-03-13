@@ -15,12 +15,10 @@ pub struct Frame {
 
 impl Frame {
     pub fn new(p: PathBuf) -> Self {
-        let data = image::open(&p)
-            .expect(&format!(
-                "Image couldn't be open by 'image' package: {:?}",
-                p
-            ))
-            .flipv();
+        let data = image::open(&p).expect(&format!(
+            "Image couldn't be open by 'image' package: {:?}",
+            p
+        ));
         let (width, height) = data.dimensions();
         Self {
             width,

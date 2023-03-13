@@ -1,3 +1,4 @@
+use rand::{thread_rng, Rng};
 use std::fs;
 use std::mem::size_of;
 use std::path::PathBuf;
@@ -80,21 +81,17 @@ impl GlProgram {
                 gl.detach_shader(program, shader);
                 gl.delete_shader(shader);
             }
-
-            let vertices: [f32; 180] = [
-                -0.5, -0.5, -0.5, 0.0, 0.0, 0.5, -0.5, -0.5, 1.0, 0.0, 0.5, 0.5, -0.5, 1.0, 1.0,
-                0.5, 0.5, -0.5, 1.0, 1.0, -0.5, 0.5, -0.5, 0.0, 1.0, -0.5, -0.5, -0.5, 0.0, 0.0,
-                -0.5, -0.5, 0.5, 0.0, 0.0, 0.5, -0.5, 0.5, 1.0, 0.0, 0.5, 0.5, 0.5, 1.0, 1.0, 0.5,
-                0.5, 0.5, 1.0, 1.0, -0.5, 0.5, 0.5, 0.0, 1.0, -0.5, -0.5, 0.5, 0.0, 0.0, -0.5, 0.5,
-                0.5, 1.0, 0.0, -0.5, 0.5, -0.5, 1.0, 1.0, -0.5, -0.5, -0.5, 0.0, 1.0, -0.5, -0.5,
-                -0.5, 0.0, 1.0, -0.5, -0.5, 0.5, 0.0, 0.0, -0.5, 0.5, 0.5, 1.0, 0.0, 0.5, 0.5, 0.5,
-                1.0, 0.0, 0.5, 0.5, -0.5, 1.0, 1.0, 0.5, -0.5, -0.5, 0.0, 1.0, 0.5, -0.5, -0.5,
-                0.0, 1.0, 0.5, -0.5, 0.5, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 0.0, -0.5, -0.5, -0.5, 0.0,
-                1.0, 0.5, -0.5, -0.5, 1.0, 1.0, 0.5, -0.5, 0.5, 1.0, 0.0, 0.5, -0.5, 0.5, 1.0, 0.0,
-                -0.5, -0.5, 0.5, 0.0, 0.0, -0.5, -0.5, -0.5, 0.0, 1.0, -0.5, 0.5, -0.5, 0.0, 1.0,
-                0.5, 0.5, -0.5, 1.0, 1.0, 0.5, 0.5, 0.5, 1.0, 0.0, 0.5, 0.5, 0.5, 1.0, 0.0, -0.5,
-                0.5, 0.5, 0.0, 0.0, -0.5, 0.5, -0.5, 0.0, 1.0,
+            let vertices: [f32; 30] = [
+                // upper left
+                -0.5, 0.5, 0.0, 0.0, 1.0, //
+                -0.5, -0.5, 0.0, 0.0, 0.0, //
+                0.5, 0.5, 0.0, 1.0, 1.0, //
+                // lower right
+                0.5, 0.5, 0.0, 1.0, 1.0, //
+                0.5, -0.5, 0.0, 1.0, 0.0, //
+                -0.5, -0.5, 0.0, 0.0, 0.0, //
             ];
+
             // Vertex Buffer
             let vbo = gl.create_buffer().unwrap();
             let (_, vertices_bytes, _) = vertices.align_to::<u8>();
@@ -162,9 +159,7 @@ impl GlProgram {
     }
 
     unsafe fn generate_texture(&self, gl: &glow::Context, media: &Frame) {
-        // let t = gl.create_texture().expect("Error while creating texture");
         gl.bind_texture(TEXTURE_2D, Some(self.texture));
-
         gl.tex_image_2d(
             TEXTURE_2D,
             0,
@@ -180,18 +175,18 @@ impl GlProgram {
     }
 
     pub unsafe fn draw(&self, gl: &glow::Context, media: Option<Frame>) {
-        let cubes_indices: [TVec3<f32>; 10] = [
-            vec3(0.0, 0.0, -10.0),
-            vec3(2.0, 5.0, -15.0),
-            vec3(-1.5, -2.2, -2.5),
-            vec3(-3.8, -2.0, -12.3),
-            vec3(2.4, -0.4, -3.5),
-            vec3(-1.7, 3.0, -7.5),
-            vec3(1.3, -2.0, -2.5),
-            vec3(1.5, 2.0, -2.5),
-            vec3(1.5, 0.2, -1.5),
-            vec3(-1.3, 1.0, -1.5),
-        ];
+        let cubes_indices: [TVec3<f32>; 1] = [vec3(0.0, 0.0, -3.0)];
+        //     vec3(2.0, 5.0, -15.0),
+        //     vec3(-1.5, -2.2, -2.5),
+        //     vec3(-3.8, -2.0, -12.3),
+        //     vec3(2.4, -0.4, -3.5),
+        //     vec3(-1.7, 3.0, -7.5),
+        //     vec3(1.3, -2.0, -2.5),
+        //     vec3(1.5, 2.0, -2.5),
+        //     vec3(1.5, 0.2, -1.5),
+        //     vec3(-1.3, 1.0, -1.5),
+        // ];
+
         if let Some(m) = media {
             self.generate_texture(gl, &m);
         }
@@ -199,8 +194,7 @@ impl GlProgram {
 
         gl.use_program(Some(self.program));
 
-        let model: TMat4<f32> =
-            rotation((10.0_f32).to_radians(), &(vec3(0.5, 1.0, 0.0).normalize()));
+        let model: TMat4<f32> = rotation(0.0_f32.to_radians(), &(vec3(0.5, 1.0, 0.0).normalize()));
         let view: TMat4<f32> = translation(&(vec3(0., 0., -3.).normalize()));
         let projection: TMat4<f32> = perspective(1., (45_f32).to_radians(), 0.1, 100.0);
         let model_loc = gl.get_uniform_location(self.program, "model");
@@ -211,14 +205,18 @@ impl GlProgram {
         gl.uniform_matrix_4_f32_slice(view_loc.as_ref(), false, view.as_slice());
         gl.uniform_matrix_4_f32_slice(projection_loc.as_ref(), false, projection.as_slice());
 
+        let mut rng = thread_rng();
+
+        // Exclusive range
         gl.bind_vertex_array(Some(self.vao));
         for (i, position) in cubes_indices.iter().enumerate() {
             // calculate the model matrix for each object and pass it to shader before drawing
-            let angle = (20 * i) as f32;
+            let n: f32 = rng.gen_range(-90.0..90.0);
+            let angle = n * i as f32;
             let mut model: TMat4<f32> = translation(&position);
             model = model * rotation(angle.to_radians(), &vec3(1.0, 0.3, 0.5));
             gl.uniform_matrix_4_f32_slice(model_loc.as_ref(), false, model.as_slice());
-            gl.draw_arrays(glow::TRIANGLES, 0, 6 + 3 * cubes_indices.len() as i32);
+            gl.draw_arrays(glow::TRIANGLES, 0, 6);
         }
         gl.bind_vertex_array(None);
         gl.bind_texture(TEXTURE_2D, None);
