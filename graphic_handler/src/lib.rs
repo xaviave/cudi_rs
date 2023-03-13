@@ -2,7 +2,7 @@ mod controls;
 mod gl_program;
 pub mod graphic_config;
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use controls::Controls;
 use gl_program::GlProgram;
@@ -70,9 +70,10 @@ impl GraphicContext {
                 gl.enable(glow::BLEND);
                 gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
 
-                // // Disable multisampling by default
-                // gl.disable(glow::MULTISAMPLE);
+                // Disable multisampling by default
+                gl.disable(glow::MULTISAMPLE);
 
+                gl.enable(glow::DEPTH_TEST);
                 (gl, windowed_context)
             }
         };
