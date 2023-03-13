@@ -181,7 +181,7 @@ impl GlProgram {
 
     pub unsafe fn draw(&self, gl: &glow::Context, media: Option<Frame>) {
         let cubes_indices: [TVec3<f32>; 10] = [
-            vec3(0.0, 0.0, 0.0),
+            vec3(0.0, 0.0, -10.0),
             vec3(2.0, 5.0, -15.0),
             vec3(-1.5, -2.2, -2.5),
             vec3(-3.8, -2.0, -12.3),
@@ -200,7 +200,7 @@ impl GlProgram {
         gl.use_program(Some(self.program));
 
         let model: TMat4<f32> =
-            rotation((0.0_f32).to_radians(), &(vec3(0.5, 1.0, 0.0).normalize()));
+            rotation((10.0_f32).to_radians(), &(vec3(0.5, 1.0, 0.0).normalize()));
         let view: TMat4<f32> = translation(&(vec3(0., 0., -3.).normalize()));
         let projection: TMat4<f32> = perspective(1., (45_f32).to_radians(), 0.1, 100.0);
         let model_loc = gl.get_uniform_location(self.program, "model");
@@ -218,7 +218,7 @@ impl GlProgram {
             let mut model: TMat4<f32> = translation(&position);
             model = model * rotation(angle.to_radians(), &vec3(1.0, 0.3, 0.5));
             gl.uniform_matrix_4_f32_slice(model_loc.as_ref(), false, model.as_slice());
-            gl.draw_arrays(glow::TRIANGLES, 0, 6);
+            gl.draw_arrays(glow::TRIANGLES, 0, 6 + 3 * cubes_indices.len() as i32);
         }
         gl.bind_vertex_array(None);
         gl.bind_texture(TEXTURE_2D, None);
