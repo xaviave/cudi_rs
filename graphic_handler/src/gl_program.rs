@@ -8,19 +8,30 @@ use iced_glow::glow;
 use iced_glow::Color;
 use media_handler::Frame;
 
-// use nalgebra;
-use nalgebra_glm::{perspective, rotation, translation, vec3, TMat4, TVec3};
+use nalgebra_glm::{scale, translate, translation, vec3, TMat4, TVec3};
+
+use crate::scene::Scene;
 
 pub struct GlProgram {
-    program: glow::Program,
+    pub program: glow::Program,
     vao: glow::VertexArray,
     vbo: NativeBuffer,
     texture: NativeTexture,
+    scene: Scene,
 }
 
 impl GlProgram {
     fn get_shader_from_file(shader_path: PathBuf) -> String {
         fs::read_to_string(shader_path).expect("Unable to read file")
+    }
+
+    fn get_vertex_array() -> [f32; 30] {
+        [
+            // upper left
+            -0.5, 0.5, 0.0, 0.0, 1.0, -0.5, -0.5, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 1.0, 1.0,
+            // lower right
+            0.5, 0.5, 0.0, 1.0, 1.0, 0.5, -0.5, 0.0, 1.0, 0.0, -0.5, -0.5, 0.0, 0.0, 0.0,
+        ]
     }
 
     fn init_shaders(
@@ -81,16 +92,7 @@ impl GlProgram {
                 gl.detach_shader(program, shader);
                 gl.delete_shader(shader);
             }
-            let vertices: [f32; 30] = [
-                // upper left
-                -0.5, 0.5, 0.0, 0.0, 1.0, //
-                -0.5, -0.5, 0.0, 0.0, 0.0, //
-                0.5, 0.5, 0.0, 1.0, 1.0, //
-                // lower right
-                0.5, 0.5, 0.0, 1.0, 1.0, //
-                0.5, -0.5, 0.0, 1.0, 0.0, //
-                -0.5, -0.5, 0.0, 0.0, 0.0, //
-            ];
+            let vertices: [f32; 30] = Self::get_vertex_array();
 
             // Vertex Buffer
             let vbo = gl.create_buffer().unwrap();
@@ -142,12 +144,16 @@ impl GlProgram {
             );
             gl.generate_mipmap(TEXTURE_2D);
 
+            let mut scene = Scene::new(gl, &program);
+            scene.ratio = loading_media.ratio;
+
             gl.use_program(Some(program));
             Self {
                 program,
                 vao,
                 vbo,
                 texture,
+                scene,
             }
         }
     }
@@ -174,48 +180,32 @@ impl GlProgram {
         gl.generate_mipmap(TEXTURE_2D);
     }
 
-    pub unsafe fn draw(&self, gl: &glow::Context, media: Option<Frame>) {
+    pub unsafe fn draw(&mut self, gl: &glow::Context, media: Option<Frame>) {
         let cubes_indices: [TVec3<f32>; 1] = [vec3(0.0, 0.0, -3.0)];
-        //     vec3(2.0, 5.0, -15.0),
-        //     vec3(-1.5, -2.2, -2.5),
-        //     vec3(-3.8, -2.0, -12.3),
-        //     vec3(2.4, -0.4, -3.5),
-        //     vec3(-1.7, 3.0, -7.5),
-        //     vec3(1.3, -2.0, -2.5),
-        //     vec3(1.5, 2.0, -2.5),
-        //     vec3(1.5, 0.2, -1.5),
-        //     vec3(-1.3, 1.0, -1.5),
-        // ];
+        let mut rng = thread_rng();
 
         if let Some(m) = media {
+            self.scene.ratio = m.ratio;
+            self.scene.last_pos = vec3(
+                rng.gen_range(-1.2..1.2),
+                rng.gen_range(-1.2..1.2),
+                rng.gen_range(-1.2..1.2),
+            );
             self.generate_texture(gl, &m);
         }
-        gl.bind_texture(TEXTURE_2D, Some(self.texture));
 
+        gl.bind_texture(TEXTURE_2D, Some(self.texture));
         gl.use_program(Some(self.program));
 
-        let model: TMat4<f32> = rotation(0.0_f32.to_radians(), &(vec3(0.5, 1.0, 0.0).normalize()));
-        let view: TMat4<f32> = translation(&(vec3(0., 0., -3.).normalize()));
-        let projection: TMat4<f32> = perspective(1., (45_f32).to_radians(), 0.1, 100.0);
-        let model_loc = gl.get_uniform_location(self.program, "model");
-        let view_loc = gl.get_uniform_location(self.program, "view");
-        let projection_loc = gl.get_uniform_location(self.program, "projection");
-
-        gl.uniform_matrix_4_f32_slice(model_loc.as_ref(), false, model.as_slice());
-        gl.uniform_matrix_4_f32_slice(view_loc.as_ref(), false, view.as_slice());
-        gl.uniform_matrix_4_f32_slice(projection_loc.as_ref(), false, projection.as_slice());
-
-        let mut rng = thread_rng();
+        self.scene.update_scene(gl);
 
         // Exclusive range
         gl.bind_vertex_array(Some(self.vao));
         for (i, position) in cubes_indices.iter().enumerate() {
             // calculate the model matrix for each object and pass it to shader before drawing
-            let n: f32 = rng.gen_range(-90.0..90.0);
-            let angle = n * i as f32;
-            let mut model: TMat4<f32> = translation(&position);
-            model = model * rotation(angle.to_radians(), &vec3(1.0, 0.3, 0.5));
-            gl.uniform_matrix_4_f32_slice(model_loc.as_ref(), false, model.as_slice());
+            let mut model: TMat4<f32> = translate(&translation(&position), &self.scene.last_pos);
+            model = scale(&model, &vec3(self.scene.ratio, 1.0, 1.));
+            self.scene.update_model(gl, model);
             gl.draw_arrays(glow::TRIANGLES, 0, 6);
         }
         gl.bind_vertex_array(None);

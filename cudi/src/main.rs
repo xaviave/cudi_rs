@@ -16,9 +16,9 @@ fn main() {
     let media_handler = MediaHandler::new(media_config);
 
     let graphic_config = GraphicConfig::new(
-        25,
-        100,
-        100,
+        20,
+        250,
+        250,
         "CUDI",
         "data/init/loading.jpg",
         "Running panorama",

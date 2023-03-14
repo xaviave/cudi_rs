@@ -38,7 +38,7 @@ impl GraphicConfig {
             to set the window size
         */
         Self {
-            fps: fps * 10,
+            fps: 1000 / fps,
             width,
             height,
             app_name: String::from(app_name),

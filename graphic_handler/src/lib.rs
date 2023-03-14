@@ -1,12 +1,14 @@
 mod controls;
 mod gl_program;
 pub mod graphic_config;
+mod scene;
 
 use std::time::Instant;
 
 use controls::Controls;
 use gl_program::GlProgram;
 use graphic_config::GraphicConfig;
+use media_handler::media_handler::MediaHandler;
 
 use glow::*;
 use glutin::dpi::PhysicalPosition;
@@ -19,7 +21,6 @@ use iced_glutin::glutin::{self, ContextWrapper};
 use iced_glutin::program::State;
 use iced_glutin::renderer;
 use iced_glutin::{program, Clipboard, Color, Debug, Size};
-use media_handler::media_handler::MediaHandler;
 
 pub struct GraphicContext {
     config: GraphicConfig,

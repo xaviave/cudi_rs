@@ -9,6 +9,8 @@ use std::path::PathBuf;
 pub struct Frame {
     pub width: u32,
     pub height: u32,
+    // height:width ratio
+    pub ratio: f32,
     pub path: PathBuf,
     pub data: DynamicImage,
 }
@@ -23,6 +25,7 @@ impl Frame {
         Self {
             width,
             height,
+            ratio: width as f32 / height as f32,
             path: p,
             data,
         }

@@ -4,13 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-cgmath = "0.18.0"
+media_handler = { path = "../media_handler" }
 env_logger = "0.8"
 iced = "0.7.0"
 iced_glow = "0.6.0"
 iced_glutin = "0.6.0"
 iced_winit = "0.7.0"
-media_handler = { path = "../media_handler" }
 nalgebra = "0.32.2"
 nalgebra-glm = "0.18.0"
 rand = "0.8.5"
