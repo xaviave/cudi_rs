@@ -1,8 +1,6 @@
 use glow::*;
 use iced_glow::glow;
 
-use crate::gl_program::GlProgram;
-
 use nalgebra_glm::{perspective, rotation, translation, vec3, TMat4, TVec3};
 
 pub struct Scene {

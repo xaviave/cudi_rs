@@ -3,39 +3,33 @@ mod gl_program;
 pub mod graphic_config;
 mod scene;
 
-use std::time::Instant;
-
 use controls::Controls;
 use gl_program::GlProgram;
 use graphic_config::GraphicConfig;
 use media_handler::media_handler::MediaHandler;
 
+use std::time::Instant;
+
 use glow::*;
-use glutin::dpi::PhysicalPosition;
-use glutin::event::{Event, ModifiersState, WindowEvent};
-use glutin::event_loop::ControlFlow;
-use iced_glow::glow;
-use iced_glow::{Backend, Renderer, Settings, Viewport};
-use iced_glutin::conversion;
-use iced_glutin::glutin::{self, ContextWrapper};
-use iced_glutin::program::State;
-use iced_glutin::renderer;
-use iced_glutin::{program, Clipboard, Color, Debug, Size};
+use iced_glow::*;
+
+use iced_glutin::glutin;
+use iced_glutin::*;
 
 pub struct GraphicContext {
     config: GraphicConfig,
 
     gl: Context,
-    windowed_context: ContextWrapper<glutin::PossiblyCurrent, glutin::window::Window>,
+    windowed_context: glutin::ContextWrapper<glutin::PossiblyCurrent, glutin::window::Window>,
     event_loop: glutin::event_loop::EventLoop<()>,
 
     viewport: Viewport,
     program: GlProgram,
-    renderer: Renderer,
+    renderer: iced_glow::Renderer,
 
-    state: State<Controls>,
-    cursor_position: PhysicalPosition<f64>,
-    modifiers: ModifiersState,
+    state: program::State<Controls>,
+    cursor_position: glutin::dpi::PhysicalPosition<f64>,
+    modifiers: glutin::event::ModifiersState,
     clipboard: Clipboard,
     resized: bool,
     debug: Debug,
@@ -87,16 +81,17 @@ impl GraphicContext {
 
         let mut debug = Debug::new();
         let controls = Controls::new();
-        let modifiers = ModifiersState::default();
+        let modifiers = glutin::event::ModifiersState::default();
         let program = GlProgram::new(
             &gl,
             &config.vertex_path,
             &config.fragment_path,
             &config.loading_media,
         );
-        let cursor_position = PhysicalPosition::new(-1.0, -1.0);
+        let cursor_position = glutin::dpi::PhysicalPosition::new(-1.0, -1.0);
         let clipboard = Clipboard::connect(windowed_context.window());
-        let mut renderer = Renderer::new(Backend::new(&gl, Settings::default()));
+        let mut renderer =
+            iced_glow::Renderer::new(Backend::new(&gl, iced_glow::Settings::default()));
         let state =
             program::State::new(controls, viewport.logical_size(), &mut renderer, &mut debug);
 
@@ -123,18 +118,18 @@ impl GraphicContext {
         let mut current_time = Instant::now();
 
         self.event_loop.run(move |event, _, control_flow| {
-            *control_flow = ControlFlow::Poll;
+            *control_flow = glutin::event_loop::ControlFlow::Poll;
 
             match event {
-                Event::WindowEvent { event, .. } => {
+                glutin::event::Event::WindowEvent { event, .. } => {
                     match event {
-                        WindowEvent::CursorMoved { position, .. } => {
+                        glutin::event::WindowEvent::CursorMoved { position, .. } => {
                             self.cursor_position = position;
                         }
-                        WindowEvent::ModifiersChanged(new_modifiers) => {
+                        glutin::event::WindowEvent::ModifiersChanged(new_modifiers) => {
                             self.modifiers = new_modifiers;
                         }
-                        WindowEvent::Resized(physical_size) => {
+                        glutin::event::WindowEvent::Resized(physical_size) => {
                             self.viewport = Viewport::with_physical_size(
                                 Size::new(physical_size.width, physical_size.height),
                                 self.windowed_context.window().scale_factor(),
@@ -142,10 +137,10 @@ impl GraphicContext {
                             need_clear = 2;
                             self.resized = true;
                         }
-                        WindowEvent::CloseRequested => unsafe {
+                        glutin::event::WindowEvent::CloseRequested => {
                             self.program.cleanup(&self.gl);
-                            *control_flow = ControlFlow::Exit
-                        },
+                            *control_flow = glutin::event_loop::ControlFlow::Exit
+                        }
                         _ => (),
                     }
 
@@ -158,7 +153,7 @@ impl GraphicContext {
                         self.state.queue_event(event);
                     }
                 }
-                Event::MainEventsCleared => {
+                glutin::event::Event::MainEventsCleared => {
                     // If there are events pending
                     if !self.state.is_queue_empty() {
                         self.state.update(
@@ -168,7 +163,7 @@ impl GraphicContext {
                                 self.viewport.scale_factor(),
                             ),
                             &mut self.renderer,
-                            &iced_glow::Theme::Dark,
+                            &Theme::Dark,
                             &renderer::Style {
                                 text_color: Color::WHITE,
                             },
@@ -183,7 +178,7 @@ impl GraphicContext {
                     }
                     self.windowed_context.window().request_redraw();
                 }
-                Event::RedrawRequested(_) => {
+                glutin::event::Event::RedrawRequested(_) => {
                     if self.resized {
                         let size = self.windowed_context.window().inner_size();
 
@@ -195,22 +190,21 @@ impl GraphicContext {
                         need_clear = 2;
                     }
 
-                    let control = self.state.program();
-                    unsafe {
-                        // double buffer need 2 clear
-                        if need_clear > 0 {
-                            self.program.clear(&self.gl, control.background_color);
-                        }
-                        self.program.draw(
-                            &self.gl,
-                            if next_media {
-                                Some(media_handler.get_next_media())
-                            } else {
-                                None
-                            },
-                        );
-                        next_media = false;
+                    // double buffer need 2 clear
+                    if need_clear > 0 {
+                        self.program
+                            .clear(&self.gl, self.state.program().background_color);
                     }
+                    self.program.draw(
+                        &self.gl,
+                        if next_media {
+                            Some(media_handler.get_next_media())
+                        } else {
+                            None
+                        },
+                    );
+                    next_media = false;
+
                     // And then iced on top
                     self.renderer.with_primitives(|backend, primitive| {
                         backend.present(&self.gl, primitive, &self.viewport, &self.debug.overlay());
