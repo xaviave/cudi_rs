@@ -1,6 +1,7 @@
 use std::fs;
 use std::mem::size_of;
 use std::path::PathBuf;
+// use std::str::FromStr;
 
 use rand;
 use rand::Rng;
@@ -16,8 +17,15 @@ use nalgebra_glm::{scale, translate, translation, vec3, TMat4, TVec3};
 
 pub struct GlProgram {
     pub program: glow::Program,
+    pub program_framebuffer: glow::Program,
     vao: glow::VertexArray,
     vbo: glow::NativeBuffer,
+
+    quad_vao: glow::VertexArray,
+    quad_vbo: glow::NativeBuffer,
+    fbo: glow::NativeFramebuffer,
+    color_texture_buffer: glow::NativeTexture,
+
     texture: glow::NativeTexture,
     scene: Scene,
 }
@@ -77,44 +85,6 @@ impl GlProgram {
         shaders
     }
 
-    fn init_buffers(gl: &glow::Context) -> (NativeVertexArray, NativeBuffer) {
-        // Vertex buffer attributes
-        let mut offset = 0;
-        let sizes = [3, 2];
-        let size_f32 = size_of::<f32>() as i32;
-        let stride = sizes.iter().sum::<i32>() * size_f32;
-        let vertices: [f32; 30] = Self::get_vertex_array();
-
-        unsafe {
-            // Vertex Buffer
-            let vbo = gl.create_buffer().unwrap();
-            let (_, vertices_bytes, _) = vertices.align_to::<u8>();
-            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
-            gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertices_bytes, glow::STATIC_DRAW);
-
-            // Vertex Array
-            let vao = gl
-                .create_vertex_array()
-                .expect("Cannot create vertex array");
-
-            gl.bind_vertex_array(Some(vao));
-            for (i, size) in sizes.iter().enumerate() {
-                gl.enable_vertex_attrib_array(i as u32);
-                gl.vertex_attrib_pointer_f32(
-                    i as u32,
-                    *size,
-                    glow::FLOAT,
-                    false,
-                    stride,
-                    offset * size_f32,
-                );
-                offset += size;
-            }
-            gl.bind_vertex_array(None);
-            (vao, vbo)
-        }
-    }
-
     fn init_texture(gl: &glow::Context) -> NativeTexture {
         unsafe {
             let texture = gl.create_texture().unwrap();
@@ -153,11 +123,146 @@ impl GlProgram {
         }
     }
 
+    fn init_buffers(gl: &glow::Context) -> (glow::NativeVertexArray, glow::NativeBuffer) {
+        // Vertex buffer attributes
+        let mut offset = 0;
+        let sizes = [3, 2];
+        let size_f32 = size_of::<f32>() as i32;
+        let stride = sizes.iter().sum::<i32>() * size_f32;
+        let vertices: [f32; 30] = Self::get_vertex_array();
+
+        unsafe {
+            // Vertex Buffer
+            let vbo = gl.create_buffer().expect("Cannot create buffer");
+            let (_, vertices_bytes, _) = vertices.align_to::<u8>();
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
+            gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertices_bytes, glow::STATIC_DRAW);
+
+            // Vertex Array
+            let vao = gl
+                .create_vertex_array()
+                .expect("Cannot create vertex array");
+
+            gl.bind_vertex_array(Some(vao));
+            for (i, size) in sizes.iter().enumerate() {
+                gl.enable_vertex_attrib_array(i as u32);
+                gl.vertex_attrib_pointer_f32(
+                    i as u32,
+                    *size,
+                    glow::FLOAT,
+                    false,
+                    stride,
+                    offset * size_f32,
+                );
+                offset += size;
+            }
+            gl.bind_vertex_array(None);
+
+            (vao, vbo)
+        }
+    }
+
+    fn init_framebuffer(
+        gl: &glow::Context,
+        win_size: (i32, i32),
+    ) -> (
+        glow::NativeVertexArray,
+        glow::NativeBuffer,
+        glow::NativeFramebuffer,
+        NativeTexture,
+    ) {
+        let mut offset = 0;
+        let sizes = [2, 2];
+        let size_f32 = size_of::<f32>() as i32;
+        let stride = sizes.iter().sum::<i32>() * size_f32;
+        let vertices: [f32; 24] = [
+            -1.0, 1.0, 0.0, 1.0, -1.0, -1.0, 0.0, 0.0, 1.0, -1.0, 1.0, 0.0, -1.0, 1.0, 0.0, 1.0,
+            1.0, -1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+        ];
+
+        unsafe {
+            // Vertex Buffer
+            let quad_vbo = gl.create_buffer().expect("Cannot create buffer");
+            let (_, vertices_bytes, _) = vertices.align_to::<u8>();
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(quad_vbo));
+            gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, vertices_bytes, glow::STATIC_DRAW);
+
+            // Vertex Array
+            let quad_vao = gl
+                .create_vertex_array()
+                .expect("Cannot create vertex array");
+
+            gl.bind_vertex_array(Some(quad_vao));
+            for (i, size) in sizes.iter().enumerate() {
+                gl.enable_vertex_attrib_array(i as u32);
+                gl.vertex_attrib_pointer_f32(
+                    i as u32,
+                    *size,
+                    glow::FLOAT,
+                    false,
+                    stride,
+                    offset * size_f32,
+                );
+                offset += size;
+            }
+            gl.bind_vertex_array(None);
+
+            let fbo = gl.create_framebuffer().expect("Cannot create framebuffer");
+            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(fbo));
+
+            let color_texture_buffer = Self::init_texture(gl);
+            gl.tex_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                glow::RGB as i32,
+                win_size.0,
+                win_size.1,
+                0,
+                glow::RGB,
+                glow::UNSIGNED_BYTE,
+                None,
+            );
+            gl.bind_texture(glow::TEXTURE_2D, None);
+            gl.framebuffer_texture_2d(
+                glow::FRAMEBUFFER,
+                glow::COLOR_ATTACHMENT0,
+                glow::TEXTURE_2D,
+                Some(color_texture_buffer),
+                0,
+            );
+            let rbo = gl
+                .create_renderbuffer()
+                .expect("Cannot create render buffer");
+            gl.bind_renderbuffer(glow::RENDERBUFFER, Some(rbo));
+            gl.renderbuffer_storage(
+                glow::RENDERBUFFER,
+                glow::DEPTH24_STENCIL8,
+                win_size.0,
+                win_size.1,
+            );
+            gl.bind_renderbuffer(glow::RENDERBUFFER, None);
+
+            gl.framebuffer_renderbuffer(
+                glow::FRAMEBUFFER,
+                glow::DEPTH_STENCIL_ATTACHMENT,
+                glow::RENDERBUFFER,
+                Some(rbo),
+            );
+            if gl.check_framebuffer_status(glow::FRAMEBUFFER) != glow::FRAMEBUFFER_COMPLETE {
+                panic!("Fail to bind framebuffer");
+            }
+            // render in main window
+            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+            (quad_vao, quad_vbo, fbo, color_texture_buffer)
+        }
+    }
+
     pub fn new(
         gl: &glow::Context,
         vertex_path: &PathBuf,
         fragment_path: &PathBuf,
         loading_media: &Frame,
+        win_size: (i32, i32),
     ) -> Self {
         unsafe {
             /*
@@ -178,7 +283,25 @@ impl GlProgram {
                 gl.delete_shader(shader);
             }
 
+            let program_framebuffer = gl.create_program().expect("Cannot create program");
+            let shaders_framebuffer = Self::init_shaders(
+                gl,
+                program_framebuffer,
+                &PathBuf::from("graphic_handler/shaders/framebuffer.vs"),
+                &PathBuf::from("graphic_handler/shaders/framebuffer.fs"),
+            );
+            gl.link_program(program_framebuffer);
+            if !gl.get_program_link_status(program_framebuffer) {
+                panic!("{}", gl.get_program_info_log(program_framebuffer));
+            }
+            for shader in shaders_framebuffer {
+                gl.detach_shader(program_framebuffer, shader);
+                gl.delete_shader(shader);
+            }
+
             let (vao, vbo) = Self::init_buffers(gl);
+            let (quad_vao, quad_vbo, fbo, color_texture_buffer) =
+                Self::init_framebuffer(gl, win_size);
             let texture = Self::init_texture(gl);
             Self::generate_texture(gl, texture, loading_media);
 
@@ -188,8 +311,13 @@ impl GlProgram {
             gl.use_program(Some(program));
             Self {
                 program,
+                program_framebuffer,
                 vao,
                 vbo,
+                quad_vao,
+                quad_vbo,
+                fbo,
+                color_texture_buffer,
                 texture,
                 scene,
             }
@@ -219,13 +347,18 @@ impl GlProgram {
         }
 
         unsafe {
+            //  1. Render in the framebuffer texture
+            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.fbo));
+            // don't clear the framebuffer GL_COLOR_BUFFER_BIT to keep last buffer data
+            gl.clear(glow::DEPTH_BUFFER_BIT);
+            gl.enable(glow::DEPTH_TEST);
+
             gl.bind_texture(glow::TEXTURE_2D, Some(self.texture));
             gl.use_program(Some(self.program));
 
             self.scene.update_scene(gl);
 
             gl.bind_vertex_array(Some(self.vao));
-
             for (i, position) in cubes_indices.iter().enumerate() {
                 // calculate the model matrix for each object and pass it to shader before drawing
                 let mut model: TMat4<f32> =
@@ -237,14 +370,27 @@ impl GlProgram {
             // Unbind everything to clean
             gl.bind_vertex_array(None);
             gl.bind_texture(glow::TEXTURE_2D, None);
+
+            // 2. Bind default framebuffer, draw a plane and show the texture scene
+            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+            gl.disable(glow::DEPTH_TEST);
+
+            gl.use_program(Some(self.program_framebuffer));
+            gl.bind_vertex_array(Some(self.quad_vao));
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.color_texture_buffer));
+            gl.draw_arrays(glow::TRIANGLES, 0, 6)
         }
     }
 
     pub fn cleanup(&self, gl: &glow::Context) {
         unsafe {
             gl.delete_program(self.program);
+            gl.delete_program(self.program_framebuffer);
             gl.delete_vertex_array(self.vao);
+            gl.delete_vertex_array(self.quad_vao);
             gl.delete_buffer(self.vbo);
+            gl.delete_buffer(self.quad_vbo);
+            gl.delete_framebuffer(self.fbo);
         }
     }
 }

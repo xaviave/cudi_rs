@@ -7,7 +7,7 @@ use crate::media_config::MediaConfig;
 use crate::Frame;
 
 /*
-Add a strategy with a trait to handle different API or local downlloading
+Add a strategy with a trait to handle different API or local downloading
 also for video, gif or image for the next_media iterator
 
 https://rust-unofficial.github.io/patterns/patterns/behavioural/strategy.html
@@ -26,6 +26,7 @@ impl MediaHandler {
         x.shuffle(&mut rng);
         Box::new(x.into_iter())
     }
+
     pub fn new(config: MediaConfig) -> Self {
         let ml: Vec<PathBuf> = fs::read_dir(&config.data_folder)
             .unwrap()

@@ -14,18 +14,19 @@ This app is a display of the world, it will show you images with a particular ae
 ### Steps
 
 1. Simple OpenGL engine in Rust:
-   - Open a window with some images shown (WIP)
-   - Handle the high volume of local image to download per-second
+   - ~~Open a window with some images shown~~
+   - Handle the high volume of local image to download per-second (WIP)
    - Handle the sound
    - Handle video on screen
-2. Options and customisations of the engine:
+2. Options and customizations of the engine:
    - Custom parameter to control the engine
-     - FPS
+     - ~~FPS~~
      - Filter
      - Mode (Cinema/Background)
-     - Media path selector
-     - Tags (WIP)
+     - ~~Media path selector~~
+     - Tags
      - Animations
+   - Custom parameter in UX
    - Show Music player
    - Show Music analysis window
    - Media history (like/dislike) -> search engine w/ postgresql
@@ -50,7 +51,7 @@ This app is a display of the world, it will show you images with a particular ae
 
 - create an ImageDownloader class.
 - create an API to choose images by tag or on a specific directory
-- choose between multithreading, multitasking and asynchrone task to download at higher speed the images. Their parameters like download_speed or tags could be dynamically changed by the Menu class
+- choose between multithreading, multitasking and asynchron task to download at higher speed the images. Their parameters like download_speed or tags could be dynamically changed by the Menu class
 
 ##### Screen handler
 

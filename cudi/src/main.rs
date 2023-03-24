@@ -21,9 +21,8 @@ fn main() {
         250,
         "CUDI",
         "data/init/loading.jpg",
-        "Running panorama",
-        "graphic_handler/shaders/cc.vs",
-        "graphic_handler/shaders/cc.fs",
+        "graphic_handler/shaders/cudi.vs",
+        "graphic_handler/shaders/cudi.fs",
     );
     let g = GraphicContext::new(graphic_config);
     g.launch_graphic(media_handler);

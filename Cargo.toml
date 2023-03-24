@@ -4,4 +4,5 @@ members = [
     "cudi",
     "media_handler",
     "graphic_handler",
+    "yaml_utils"
 ]

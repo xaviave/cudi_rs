@@ -87,6 +87,7 @@ impl GraphicContext {
             &config.vertex_path,
             &config.fragment_path,
             &config.loading_media,
+            (physical_size.width as i32, physical_size.height as i32),
         );
         let cursor_position = glutin::dpi::PhysicalPosition::new(-1.0, -1.0);
         let clipboard = Clipboard::connect(windowed_context.window());

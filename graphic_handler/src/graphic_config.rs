@@ -8,7 +8,6 @@ pub struct GraphicConfig {
     pub width: u32,
     pub height: u32,
     pub app_name: String,
-    pub window_name: String,
     pub loading_media: Frame,
     pub vertex_path: PathBuf,
     pub fragment_path: PathBuf,
@@ -29,20 +28,19 @@ impl GraphicConfig {
         height: u32,
         app_name: &str,
         loading_media_path: &str,
-        window_name: &str,
         vertex_path: &str,
         fragment_path: &str,
     ) -> Self {
         /*
-            could use an arg call "window_config" with foating or fullscreen
+            could use an arg call "window_config" with floating or fullscreen
             to set the window size
         */
+
         Self {
             fps: 1000 / fps,
             width,
             height,
             app_name: String::from(app_name),
-            window_name: String::from(window_name),
             loading_media: Frame::new(Self::file_exist(loading_media_path)),
             vertex_path: Self::file_exist(vertex_path),
             fragment_path: Self::file_exist(fragment_path),
