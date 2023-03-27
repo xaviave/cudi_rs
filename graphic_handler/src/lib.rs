@@ -42,6 +42,7 @@ impl GraphicContext {
         let event_loop = glutin::event_loop::EventLoop::new();
 
         let (gl, windowed_context) = {
+            // TODO https://github.com/rust-windowing/winit/blob/master/examples/fullscreen.rs
             let wb = glutin::window::WindowBuilder::new()
                 .with_title(&config.app_name)
                 .with_inner_size(glutin::dpi::LogicalSize::new(config.width, config.height));
@@ -84,9 +85,7 @@ impl GraphicContext {
         let modifiers = glutin::event::ModifiersState::default();
         let program = GlProgram::new(
             &gl,
-            &config.vertex_path,
-            &config.fragment_path,
-            &config.loading_media,
+            &config,
             (physical_size.width as i32, physical_size.height as i32),
         );
         let cursor_position = glutin::dpi::PhysicalPosition::new(-1.0, -1.0);
@@ -114,9 +113,11 @@ impl GraphicContext {
     }
 
     pub fn launch_graphic(mut self, mut media_handler: MediaHandler) {
-        let mut need_clear: u8 = 0;
+        let mut need_clear: u8 = 1;
         let mut next_media = false;
         let mut current_time = Instant::now();
+        let mut viewport_size = self.windowed_context.window().inner_size();
+        let mut viewport_ratio = viewport_size.width as f32 / viewport_size.height as f32;
 
         self.event_loop.run(move |event, _, control_flow| {
             *control_flow = glutin::event_loop::ControlFlow::Poll;
@@ -181,22 +182,28 @@ impl GraphicContext {
                 }
                 glutin::event::Event::RedrawRequested(_) => {
                     if self.resized {
-                        let size = self.windowed_context.window().inner_size();
-
+                        viewport_size = self.windowed_context.window().inner_size();
+                        viewport_ratio = viewport_size.width as f32 / viewport_size.height as f32;
                         unsafe {
-                            self.gl
-                                .viewport(0, 0, size.width as i32, size.height as i32);
+                            self.gl.viewport(
+                                0,
+                                0,
+                                viewport_size.width as i32,
+                                viewport_size.height as i32,
+                            );
                         }
                         self.program
-                            .resize_buffer(&self.gl, (size.width as i32, size.height as i32));
+                            .resize_buffer(&self.gl, viewport_size.into(), &self.config);
                         self.resized = false;
                         need_clear = 2;
                     }
 
                     // double buffer need 2 clear
-                    if need_clear > 0 {
-                        self.program
-                            .clear(&self.gl, self.state.program().background_color);
+                    let p = self.state.program().background_color;
+                    if need_clear > 0 || p != self.program.bg_color {
+                        self.program.bg_color = p;
+                        self.program.clear(&self.gl);
+                        need_clear -= 1;
                     }
                     self.program.draw(
                         &self.gl,
@@ -205,6 +212,7 @@ impl GraphicContext {
                         } else {
                             None
                         },
+                        viewport_ratio,
                     );
                     next_media = false;
 

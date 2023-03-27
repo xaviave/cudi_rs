@@ -11,6 +11,8 @@ pub struct GraphicConfig {
     pub loading_media: Frame,
     pub vertex_path: PathBuf,
     pub fragment_path: PathBuf,
+    pub fbo_vertex_path: PathBuf,
+    pub fbo_fragment_path: PathBuf,
 }
 
 impl GraphicConfig {
@@ -30,6 +32,8 @@ impl GraphicConfig {
         loading_media_path: &str,
         vertex_path: &str,
         fragment_path: &str,
+        fbo_vertex_path: &str,
+        fbo_fragment_path: &str,
     ) -> Self {
         /*
             could use an arg call "window_config" with floating or fullscreen
@@ -44,6 +48,8 @@ impl GraphicConfig {
             loading_media: Frame::new(Self::file_exist(loading_media_path)),
             vertex_path: Self::file_exist(vertex_path),
             fragment_path: Self::file_exist(fragment_path),
+            fbo_vertex_path: Self::file_exist(fbo_vertex_path),
+            fbo_fragment_path: Self::file_exist(fbo_fragment_path),
         }
     }
 }

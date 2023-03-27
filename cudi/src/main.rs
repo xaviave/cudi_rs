@@ -23,6 +23,8 @@ fn main() {
         "data/init/loading.jpg",
         "graphic_handler/shaders/cudi.vs",
         "graphic_handler/shaders/cudi.fs",
+        "graphic_handler/shaders/framebuffer.vs",
+        "graphic_handler/shaders/framebuffer.fs",
     );
     let g = GraphicContext::new(graphic_config);
     g.launch_graphic(media_handler);
