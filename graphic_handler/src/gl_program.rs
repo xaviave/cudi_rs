@@ -1,5 +1,6 @@
 use std::fs;
 use std::mem::size_of;
+use std::path::Path;
 use std::path::PathBuf;
 // use std::str::FromStr;
 
@@ -257,6 +258,26 @@ impl GlProgram {
         }
     }
 
+    fn create_program(
+        gl: &glow::Context,
+        vertex_path: &PathBuf,
+        fragment_path: &PathBuf,
+    ) -> glow::NativeProgram {
+        unsafe {
+            let program = gl.create_program().expect("Cannot create program");
+            let shaders = Self::init_shaders(gl, program, vertex_path, fragment_path);
+            gl.link_program(program);
+            if !gl.get_program_link_status(program) {
+                panic!("{}", gl.get_program_info_log(program));
+            }
+            for shader in shaders {
+                gl.detach_shader(program, shader);
+                gl.delete_shader(shader);
+            }
+            program
+        }
+    }
+
     pub fn new(
         gl: &glow::Context,
         vertex_path: &PathBuf,
@@ -272,32 +293,12 @@ impl GlProgram {
                 Create the main texture
                 Create the render scene
             */
-            let program = gl.create_program().expect("Cannot create program");
-            let shaders = Self::init_shaders(gl, program, vertex_path, fragment_path);
-            gl.link_program(program);
-            if !gl.get_program_link_status(program) {
-                panic!("{}", gl.get_program_info_log(program));
-            }
-            for shader in shaders {
-                gl.detach_shader(program, shader);
-                gl.delete_shader(shader);
-            }
-
-            let program_framebuffer = gl.create_program().expect("Cannot create program");
-            let shaders_framebuffer = Self::init_shaders(
+            let program = GlProgram::create_program(gl, vertex_path, fragment_path);
+            let program_framebuffer = GlProgram::create_program(
                 gl,
-                program_framebuffer,
                 &PathBuf::from("graphic_handler/shaders/framebuffer.vs"),
                 &PathBuf::from("graphic_handler/shaders/framebuffer.fs"),
             );
-            gl.link_program(program_framebuffer);
-            if !gl.get_program_link_status(program_framebuffer) {
-                panic!("{}", gl.get_program_info_log(program_framebuffer));
-            }
-            for shader in shaders_framebuffer {
-                gl.detach_shader(program_framebuffer, shader);
-                gl.delete_shader(shader);
-            }
 
             let (vao, vbo) = Self::init_buffers(gl);
             let (quad_vao, quad_vbo, fbo, color_texture_buffer) =
@@ -382,15 +383,39 @@ impl GlProgram {
         }
     }
 
-    pub fn cleanup(&self, gl: &glow::Context) {
+    pub fn resize_buffer(&mut self, gl: &glow::Context, win_size: (i32, i32)) {
+        self.cleanup_buffer(gl);
+        (self.vao, self.vbo) = Self::init_buffers(gl);
+        (
+            self.quad_vao,
+            self.quad_vbo,
+            self.fbo,
+            self.color_texture_buffer,
+        ) = Self::init_framebuffer(gl, win_size);
+        self.texture = Self::init_texture(gl);
+
         unsafe {
-            gl.delete_program(self.program);
-            gl.delete_program(self.program_framebuffer);
+            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+            gl.disable(glow::DEPTH_TEST);
+            self.clear(gl, Color::new(0., 0., 0., 1.));
+        }
+    }
+
+    pub fn cleanup_buffer(&self, gl: &glow::Context) {
+        unsafe {
             gl.delete_vertex_array(self.vao);
             gl.delete_vertex_array(self.quad_vao);
             gl.delete_buffer(self.vbo);
             gl.delete_buffer(self.quad_vbo);
             gl.delete_framebuffer(self.fbo);
         }
+    }
+
+    pub fn cleanup(&self, gl: &glow::Context) {
+        unsafe {
+            gl.delete_program(self.program);
+            gl.delete_program(self.program_framebuffer);
+        }
+        self.cleanup_buffer(gl);
     }
 }

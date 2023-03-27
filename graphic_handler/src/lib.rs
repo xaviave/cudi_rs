@@ -187,6 +187,8 @@ impl GraphicContext {
                             self.gl
                                 .viewport(0, 0, size.width as i32, size.height as i32);
                         }
+                        self.program
+                            .resize_buffer(&self.gl, (size.width as i32, size.height as i32));
                         self.resized = false;
                         need_clear = 2;
                     }
