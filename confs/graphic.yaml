@@ -8,6 +8,4 @@ engine_shader:
   - "graphic_handler/shaders/cudi.fs"
 framebuffer_shader:
   - "graphic_handler/shaders/framebuffer.vs"
-  - "graphic_handler/sh
-
-    ders/framebuffer.fs"
+  - "graphic_handler/shaders/framebuffer.fs"

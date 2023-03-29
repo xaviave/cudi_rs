@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 
+use yaml_rust::YamlLoader;
+
 #[derive(Debug)]
 pub struct MediaConfig {
     pub data_folder: PathBuf,
@@ -29,18 +31,25 @@ impl MediaConfig {
         let path = PathBuf::from(p);
         match path.try_exists() {
             Ok(_) => path,
-            Err(_) => panic!("Folder doesn't exist. Check folder path or use default."),
+            Err(_) => {
+                println!(
+                    "Data folder path: {:?} doesn't exist, using default 'data' folder",
+                    path
+                );
+                Self::create_default_folder()
+            }
         }
     }
 
-    pub fn new(df: Option<String>) -> Self {
+    pub fn new(config_file_path: &str) -> Self {
         /*
         Could add an option to get all args from a config file or environ
         */
-        let data_folder = match df {
-            Some(p) => Self::folder_exist(&p),
-            None => Self::create_default_folder(),
-        };
-        Self { data_folder }
+        let raw_cfg =
+            fs::read_to_string(config_file_path).expect("Unable to read media config file");
+        let cfg = &YamlLoader::load_from_str(&raw_cfg).unwrap()[0];
+        Self {
+            data_folder: Self::folder_exist(cfg["data_folder"].as_str().unwrap()),
+        }
     }
 }

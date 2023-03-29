@@ -1,5 +1,6 @@
 use media_handler::Frame;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
+use yaml_rust::YamlLoader;
 
 #[derive(Debug)]
 pub struct GraphicConfig {
@@ -24,32 +25,25 @@ impl GraphicConfig {
         }
     }
 
-    pub fn new(
-        fps: u128,
-        width: u32,
-        height: u32,
-        app_name: &str,
-        loading_media_path: &str,
-        vertex_path: &str,
-        fragment_path: &str,
-        fbo_vertex_path: &str,
-        fbo_fragment_path: &str,
-    ) -> Self {
+    pub fn new(config_file_path: &str) -> Self {
         /*
             could use an arg call "window_config" with floating or fullscreen
             to set the window size
         */
+        let raw_cfg =
+            fs::read_to_string(config_file_path).expect("Unable to read graphic config file");
+        let cfg = &YamlLoader::load_from_str(&raw_cfg).unwrap()[0];
 
         Self {
-            fps: 1000 / fps,
-            width,
-            height,
-            app_name: String::from(app_name),
-            loading_media: Frame::new(Self::file_exist(loading_media_path)),
-            vertex_path: Self::file_exist(vertex_path),
-            fragment_path: Self::file_exist(fragment_path),
-            fbo_vertex_path: Self::file_exist(fbo_vertex_path),
-            fbo_fragment_path: Self::file_exist(fbo_fragment_path),
+            fps: (1000 / cfg["fps"].as_i64().unwrap()) as u128,
+            width: cfg["width"].as_i64().unwrap() as u32,
+            height: cfg["height"].as_i64().unwrap() as u32,
+            app_name: String::from(cfg["window_name"].as_str().unwrap()),
+            loading_media: Frame::new(Self::file_exist(cfg["loading_media"].as_str().unwrap())),
+            vertex_path: Self::file_exist(cfg["engine_shader"][0].as_str().unwrap()),
+            fragment_path: Self::file_exist(cfg["engine_shader"][1].as_str().unwrap()),
+            fbo_vertex_path: Self::file_exist(cfg["framebuffer_shader"][0].as_str().unwrap()),
+            fbo_fragment_path: Self::file_exist(cfg["framebuffer_shader"][1].as_str().unwrap()),
         }
     }
 }
