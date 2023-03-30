@@ -1,45 +1,55 @@
+pub mod frame;
 pub mod media_config;
-pub mod media_handler;
 
-use image::DynamicImage;
-use image::GenericImageView;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug)]
-pub struct Frame {
-    pub width: u32,
-    pub height: u32,
-    // height:width ratio
-    pub ratio: f32,
-    pub path: PathBuf,
-    pub data: DynamicImage,
+use frame::Frame;
+use media_config::MediaConfig;
+
+/*
+Add a strategy with a trait to handle different API or local downloading
+also for video, gif or image for the next_media iterator
+
+https://rust-unofficial.github.io/patterns/patterns/behavioural/strategy.html
+ */
+
+// #[derive(Debug)]
+pub struct MediaHandler {
+    pub config: MediaConfig,
+    pub media_list: Vec<PathBuf>,
+    pub media_iter: Box<dyn Iterator<Item = PathBuf>>,
 }
 
-impl Frame {
-    pub fn new(p: PathBuf) -> Self {
-        let data = image::open(&p).expect(&format!(
-            "Image couldn't be open by 'image' package: {:?}",
-            p
-        ));
-        let (width, height) = data.dimensions();
-        Self {
-            width,
-            height,
-            ratio: width as f32 / height as f32,
-            path: p,
-            data,
+impl MediaHandler {
+    fn vector_to_shuffle_iter(mut x: Vec<PathBuf>) -> Box<dyn Iterator<Item = PathBuf>> {
+        let mut rng = thread_rng();
+        x.shuffle(&mut rng);
+        Box::new(x.into_iter())
+    }
+
+    pub fn new(config: MediaConfig) -> Self {
+        let ml: Vec<PathBuf> = fs::read_dir(&config.data_folder)
+            .unwrap()
+            .map(|p| p.unwrap().path())
+            .filter(|f| f.is_file())
+            .collect();
+        MediaHandler {
+            config,
+            media_list: ml.clone(),
+            media_iter: Self::vector_to_shuffle_iter(ml),
         }
     }
 
-    pub fn print_debug(&self) {
-        println!(
-            "File description:\npath: {:?}\nsize: {:?}",
-            self.path,
-            (self.width, self.height)
-        );
-    }
-
-    pub fn get_raw_image(&self) -> Vec<u8> {
-        self.data.clone().into_rgba8().into_raw()
+    pub fn get_next_media(&mut self) -> Frame {
+        match self.media_iter.next() {
+            Some(media) => Frame::new(media),
+            None => {
+                self.media_iter = Self::vector_to_shuffle_iter(self.media_list.clone());
+                self.get_next_media()
+            }
+        }
     }
 }

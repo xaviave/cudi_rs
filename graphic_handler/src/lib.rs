@@ -6,7 +6,7 @@ mod scene;
 use controls::Controls;
 use gl_program::GlProgram;
 use graphic_config::GraphicConfig;
-use media_handler::media_handler::MediaHandler;
+use media_handler::MediaHandler;
 
 use std::time::Instant;
 

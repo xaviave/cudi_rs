@@ -1,4 +1,4 @@
-use media_handler::Frame;
+use media_handler::frame::Frame;
 use std::{fs, path::PathBuf};
 use yaml_rust::YamlLoader;
 

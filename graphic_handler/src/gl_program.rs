@@ -11,7 +11,7 @@ use iced_glow::Color;
 
 use crate::graphic_config::GraphicConfig;
 use crate::scene::Scene;
-use media_handler::Frame;
+use media_handler::frame::Frame;
 
 use nalgebra_glm::{scale, translate, translation, vec3, TMat4, TVec3};
 

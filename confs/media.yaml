@@ -1,1 +1,2 @@
 data_folder: "data"
+max_threads: 10

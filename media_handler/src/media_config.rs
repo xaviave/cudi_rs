@@ -6,6 +6,7 @@ use yaml_rust::YamlLoader;
 #[derive(Debug)]
 pub struct MediaConfig {
     pub data_folder: PathBuf,
+    pub max_threads: u32,
 }
 
 impl MediaConfig {
@@ -50,6 +51,7 @@ impl MediaConfig {
         let cfg = &YamlLoader::load_from_str(&raw_cfg).unwrap()[0];
         Self {
             data_folder: Self::folder_exist(cfg["data_folder"].as_str().unwrap()),
+            max_threads: cfg["max_threads"].as_i64().unwrap() as u32,
         }
     }
 }
