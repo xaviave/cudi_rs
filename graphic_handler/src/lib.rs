@@ -6,8 +6,11 @@ mod scene;
 use controls::Controls;
 use gl_program::GlProgram;
 use graphic_config::GraphicConfig;
+use media_handler::frame::Frame;
 use media_handler::MediaHandler;
 
+use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, Sender};
 use std::time::Instant;
 
 use glow::*;
@@ -112,7 +115,12 @@ impl GraphicContext {
         }
     }
 
-    pub fn launch_graphic(mut self, mut media_handler: MediaHandler) {
+    pub fn launch_graphic(
+        mut self,
+        // mut media_handler: MediaHandler,
+        tx: Sender<u8>,
+        rx: Receiver<Frame>,
+    ) {
         let mut need_clear: u8 = 1;
         let mut next_media = false;
         let mut current_time = Instant::now();
@@ -177,6 +185,8 @@ impl GraphicContext {
                     if current_time.elapsed().as_millis() > self.config.fps {
                         current_time = Instant::now();
                         next_media = true;
+                        tx.send(1).unwrap();
+                        println!("Asked for a frame");
                     }
                     self.windowed_context.window().request_redraw();
                 }
@@ -208,7 +218,10 @@ impl GraphicContext {
                     self.program.draw(
                         &self.gl,
                         if next_media {
-                            Some(media_handler.get_next_media())
+                            match rx.recv() {
+                                Ok(f) => Some(f),
+                                Err(_) => None,
+                            }
                         } else {
                             None
                         },
