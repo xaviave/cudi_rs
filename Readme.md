@@ -47,15 +47,23 @@ This app is a display of the world, it will show you images with a particular ae
 - create an ML tag creator class using tensorflow to make a classification from all images
 - found different sources to get the image's links
 
-##### Image handler
+##### ML Tag
 
-- create an ImageDownloader class.
-- create an API to choose images by tag or on a specific directory
-- choose between multithreading, multitasking and asynchron task to download at higher speed the images. Their parameters like download_speed or tags could be dynamically changed by the Menu class
+Image tagger to reference images or videos following recurrent themes or aesthetic descriptions.
+The tags could be stored within a SQL database next to the image link.
+
+Find tag that referenced this themes:
+
+- Main Colors
+- Feelings
+- Vibes / mood
+- Art mouvements
+- Words
+- Custom tag to create KNN like media groups
+- Music style
 
 ##### Screen handler
 
-- choose tech to manage screen (C/C++/rust - openGL | python - pygame) /!\ screen must be ultra adaptative and smooth with high frameratre
 - create a Menu class that override the screen and manage all the options (image_speed - tags - mode - filter - media_root)
 - create different mode (normal - gif surrounding the screen - animation (image or video where a part of the screen will aff cudi, the reste will be the template))
 - add an history of every file with a tag search or color search
