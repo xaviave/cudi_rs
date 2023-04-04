@@ -1,12 +1,14 @@
+use image::io::Reader;
 use image::DynamicImage;
 use image::GenericImageView;
+use image::ImageFormat;
+use std::io::Cursor;
 use std::path::PathBuf;
-
 #[derive(Debug)]
 pub struct Frame {
     pub width: u32,
     pub height: u32,
-    // height:width ratio
+    // width:height ratio
     pub ratio: f32,
     pub path: PathBuf,
     pub data: DynamicImage,
@@ -26,12 +28,11 @@ impl std::fmt::Display for Frame {
 
 impl Frame {
     pub fn new(p: PathBuf) -> Self {
-        // add a image header checker to handle bad image format
-        // https://docs.rs/image/0.24.6/image/io/struct.Reader.html
         let data = image::open(&p).expect(&format!(
             "Image couldn't be open by 'image' package: {:?}",
             p
         ));
+
         let (width, height) = data.dimensions();
         Self {
             width,
