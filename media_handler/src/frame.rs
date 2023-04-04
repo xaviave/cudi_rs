@@ -12,6 +12,18 @@ pub struct Frame {
     pub data: DynamicImage,
 }
 
+impl std::fmt::Display for Frame {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "File description:\npath: {}\nsize: {}:{}",
+            self.path.display(),
+            self.width,
+            self.height
+        )
+    }
+}
+
 impl Frame {
     pub fn new(p: PathBuf) -> Self {
         // add a image header checker to handle bad image format
@@ -28,14 +40,6 @@ impl Frame {
             path: p,
             data,
         }
-    }
-
-    pub fn print_debug(&self) {
-        println!(
-            "File description:\npath: {:?}\nsize: {:?}",
-            self.path,
-            (self.width, self.height)
-        );
     }
 
     pub fn get_raw_image(&self) -> Vec<u8> {
