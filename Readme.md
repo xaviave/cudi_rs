@@ -15,14 +15,14 @@ This app is a display of the world, it will show you images with a particular ae
 
 1. Simple OpenGL engine in Rust:
    - ~~Open a window with some images shown~~
-   - Handle the high volume of local image to download per-second (WIP)
+   - ~~Handle the high volume of local image to download per-second~~
    - Handle the sound
    - Handle video on screen
 2. Options and customizations of the engine:
    - Custom parameter to control the engine
      - ~~FPS~~
      - Filter
-     - Mode (Cinema/Background)
+     - Mode (Cinema/Background/image with cudi in a plain rect see data/readme)
      - ~~Media path selector~~
      - Tags
      - Animations
