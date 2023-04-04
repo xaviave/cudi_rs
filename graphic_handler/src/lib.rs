@@ -186,7 +186,6 @@ impl GraphicContext {
                         current_time = Instant::now();
                         next_media = true;
                         tx.send(1).unwrap();
-                        println!("Asked for a frame");
                     }
                     self.windowed_context.window().request_redraw();
                 }

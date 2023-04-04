@@ -5,7 +5,6 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::Instant;
 use std::{fs, thread};
 
 use frame::Frame;
@@ -79,33 +78,46 @@ impl MediaHandler {
         }
     }
 
+    fn handle_signal(&mut self, signal: u8) {
+        if signal == 1 {
+            self.tx_graphic
+                .send(self.media_queue.pop().unwrap())
+                .unwrap();
+        }
+    }
+
+    fn fill_media_queue(&mut self) {
+        let media_needed = std::cmp::min(
+            self.config.max_threads,
+            self.config.max_threads - (self.media_queue.len() as u32),
+        );
+
+        for _ in 0..media_needed {
+            let p = self.path_queue.pop().unwrap();
+            Self::get_next_media(self.tx_downloader.clone(), p);
+        }
+        for _ in 0..media_needed {
+            match self.rx_downloader.recv() {
+                Ok(f) => self.media_queue.push(f),
+                Err(_) => (),
+            };
+        }
+    }
+
     pub fn run(&mut self) {
         loop {
-            let signal: u8 = match self.rx_graphic.try_recv() {
-                Ok(v) => v,
-                Err(_) => 0,
+            match self.rx_graphic.try_recv() {
+                Ok(v) => self.handle_signal(v),
+                Err(_) => (),
             };
-
-            if signal == 1 {
-                println!("Received {}", signal);
-                self.tx_graphic
-                    .send(self.media_queue.pop().unwrap())
-                    .unwrap();
-            }
 
             if self.path_queue.len() < ((self.config.max_threads as usize) - self.media_queue.len())
             {
                 self.path_queue = Self::shuffle_vec(self.media_paths.clone());
             }
-            for _ in 0..(self.config.max_threads - (self.media_queue.len() as u32)) {
-                let p = self.path_queue.pop().unwrap();
-                Self::get_next_media(self.tx_downloader.clone(), p);
-            }
-            for _ in 0..(self.config.max_threads - (self.media_queue.len() as u32)) {
-                match self.rx_downloader.try_recv() {
-                    Ok(f) => self.media_queue.push(f),
-                    Err(_) => (),
-                };
+            self.fill_media_queue();
+            if self.media_queue.len() > self.config.max_threads as usize {
+                panic!("Media queue with too many Frames creating too many threads or 'OsError to many files open'");
             }
         }
     }
