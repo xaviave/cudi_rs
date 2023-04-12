@@ -1,9 +1,7 @@
-use image::io::Reader;
 use image::DynamicImage;
 use image::GenericImageView;
-use image::ImageFormat;
-use std::io::Cursor;
 use std::path::PathBuf;
+
 #[derive(Debug)]
 pub struct Frame {
     pub width: u32,

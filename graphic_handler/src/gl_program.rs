@@ -345,7 +345,7 @@ impl GlProgram {
             self.scene.update_scene(gl);
 
             gl.bind_vertex_array(Some(self.vao));
-            for (i, position) in cubes_indices.iter().enumerate() {
+            for (_, position) in cubes_indices.iter().enumerate() {
                 // calculate the model matrix for each object and pass it to shader before drawing
                 let mut model: TMat4<f32> =
                     translate(&translation(&position), &self.scene.last_pos);

@@ -1,14 +1,16 @@
 pub mod frame;
 pub mod media_config;
+pub mod media_source_api;
+pub mod schema;
+pub mod sql_models;
 
-use rand::seq::SliceRandom;
-use rand::thread_rng;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::{fs, thread};
+use std::thread;
 
 use frame::Frame;
 use media_config::MediaConfig;
+use media_source_api::{LocalMedia, MediaSource, PostgreSQLMedia};
 
 /*
 Add a strategy with a trait to handle different API or local downloading
@@ -17,12 +19,12 @@ also for video, gif or image for the next_media iterator
 https://rust-unofficial.github.io/patterns/patterns/behavioural/strategy.html
  */
 
-#[derive(Debug)]
 pub struct MediaHandler {
     pub config: MediaConfig,
-    pub media_paths: Vec<PathBuf>,
+    pub media_source: MediaSource,
     pub path_queue: Vec<PathBuf>,
     pub media_queue: Vec<Frame>,
+
     tx_graphic: Sender<Frame>,
     rx_graphic: Receiver<u8>,
     tx_downloader: Sender<Frame>,
@@ -30,12 +32,6 @@ pub struct MediaHandler {
 }
 
 impl MediaHandler {
-    fn shuffle_vec(mut x: Vec<PathBuf>) -> Vec<PathBuf> {
-        let mut rng = thread_rng();
-        x.shuffle(&mut rng);
-        x
-    }
-
     fn get_next_media(tx: Sender<Frame>, media_path: PathBuf) {
         thread::spawn(move || {
             tx.send(Frame::new(media_path)).unwrap();
@@ -43,18 +39,17 @@ impl MediaHandler {
     }
 
     pub fn new(config: MediaConfig, tx_graphic: Sender<Frame>, rx_graphic: Receiver<u8>) -> Self {
-        let mp: Vec<PathBuf> = fs::read_dir(&config.data_folder)
-            .unwrap()
-            .map(|p| p.unwrap().path())
-            .filter(|f| f.is_file())
-            .collect();
+        // move media_paths to media_source
+        let mut media_source = MediaSource::Local(LocalMedia::new(&config));
+        // let mut media_source = MediaSource::DB(PostgreSQLMedia::new(&config));
 
-        let (tx_downloader, rx_downloader) = mpsc::channel();
-        let mut path_queue = Self::shuffle_vec(mp.clone());
         let mut media_queue: Vec<Frame> = vec![];
+        let (tx_downloader, rx_downloader) = mpsc::channel();
+        let mut path_queue = media_source.get_media_list(&config);
+
         for _ in 0..config.max_threads {
             if path_queue.len() < 1 {
-                path_queue = Self::shuffle_vec(mp.clone());
+                path_queue = media_source.get_media_list(&config);
             }
             let p = path_queue.pop().unwrap();
             Self::get_next_media(tx_downloader.clone(), p);
@@ -68,7 +63,7 @@ impl MediaHandler {
         }
         MediaHandler {
             config,
-            media_paths: mp,
+            media_source,
             path_queue,
             media_queue,
             tx_graphic,
@@ -113,7 +108,7 @@ impl MediaHandler {
 
             if self.path_queue.len() < ((self.config.max_threads as usize) - self.media_queue.len())
             {
-                self.path_queue = Self::shuffle_vec(self.media_paths.clone());
+                self.path_queue = self.media_source.get_media_list(&self.config);
             }
             self.fill_media_queue();
             if self.media_queue.len() > self.config.max_threads as usize {

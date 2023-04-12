@@ -7,9 +7,40 @@ This app is a display of the world, it will show you images with a particular ae
 
 ---
 
-## To do
+## Installation
+
+- Never forget to update your system:
+
+      sudo apt update && sudo apt upgrade
+
+- Install [Rust and Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) if it's not already done
+
+- Install PostgreSQL:
+
+      sudo apt install postgresql postgresql-client
+
+
+      echo DATABASE_URL=postgres://username:password@localhost/diesel_demo > .env
+
+  Create the database:
+
+      CREATE ROLE gmx;
+      CREATE DATABASE cudi_db;
+      CREATE USER gmx WITH PASSWORD '1234';
+      ALTER ROLE gmx SET default_transaction_isolation TO 'read committed';
+      GRANT ALL PRIVILEGES ON DATABASE cudi_db TO gmx;
+      \q
+
+- Run following commands:
+
+      cd media_handler
+      diesel migration run
+      cd ..
+      python3 toolbox.py -fc/--from-scratch
 
 ---
+
+## To do
 
 ### Steps
 
@@ -40,14 +71,16 @@ This app is a display of the world, it will show you images with a particular ae
 
 ---
 
-##### Image selector
+### Main parts:
+
+#### Image selector
 
 - create a database to stock the link of the image
 - create an ImageLink class that get the link from Archillect or Google Photos (check the max requests)
 - create an ML tag creator class using tensorflow to make a classification from all images
 - found different sources to get the image's links
 
-##### ML Tag
+#### ML Tag
 
 Image tagger to reference images or videos following recurrent themes or aesthetic descriptions.
 The tags could be stored within a SQL database next to the image link.
@@ -62,25 +95,23 @@ Find tag that referenced this themes:
 - Custom tag to create KNN like media groups
 - Music style
 
-##### Screen handler
+#### Screen handler
 
 - create a Menu class that override the screen and manage all the options (image_speed - tags - mode - filter - media_root)
 - create different mode (normal - gif surrounding the screen - animation (image or video where a part of the screen will aff cudi, the reste will be the template))
 - add an history of every file with a tag search or color search
 
-##### Music handler
+#### Music handler
 
 - manage the audio from the computer
 - analyze the sound's curb to adapt cudi's parameter
 - add an ML class to adapt the tags from the audio
 
----
-
-### Animation
+#### Animation
 
 Animation could be add to the screen:
 
 - TV screen (high speed video\* accelerated with b/w filter and speed cut)
 - Images in line on the top of the screen, a slow dark wallscreen animation will be always display. Those images will describe a type of sound (frequencies). When this type will appear in a music the corresponding image will grow then retake is place. All the sounds will create a nearly chaotic and unique animation for each music.
 
-\*car chase, illegal japanese drift, race (boat, bike, car, plane, spaceship)
+##### \*car chase, illegal japanese drift, race (boat, bike, car, plane, spaceship)

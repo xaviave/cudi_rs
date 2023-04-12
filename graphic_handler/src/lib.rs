@@ -7,9 +7,7 @@ use controls::Controls;
 use gl_program::GlProgram;
 use graphic_config::GraphicConfig;
 use media_handler::frame::Frame;
-use media_handler::MediaHandler;
 
-use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::Instant;
 

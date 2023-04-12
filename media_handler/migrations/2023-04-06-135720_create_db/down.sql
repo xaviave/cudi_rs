@@ -1,0 +1,3 @@
+DROP TABLE media;
+DROP TABLE format;
+DROP TABLE tag;

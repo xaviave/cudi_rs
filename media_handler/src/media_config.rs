@@ -7,6 +7,7 @@ use yaml_rust::YamlLoader;
 pub struct MediaConfig {
     pub data_folder: PathBuf,
     pub max_threads: u32,
+    pub database_url: String,
 }
 
 impl MediaConfig {
@@ -52,6 +53,7 @@ impl MediaConfig {
         Self {
             data_folder: Self::folder_exist(cfg["data_folder"].as_str().unwrap()),
             max_threads: cfg["max_threads"].as_i64().unwrap() as u32,
+            database_url: String::from(cfg["database_url"].as_str().unwrap()),
         }
     }
 }

@@ -1,2 +1,3 @@
 data_folder: "data"
 max_threads: 10
+database_url: "postgres://gmx:1234@localhost/cudi_db"

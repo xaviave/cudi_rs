@@ -1,0 +1,16 @@
+CREATE TABLE format (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR NOT NULL UNIQUE
+);
+
+CREATE TABLE tag (
+	id SERIAL PRIMARY KEY,
+	name VARCHAR NOT NULL UNIQUE
+);
+
+CREATE TABLE media (
+	url VARCHAR NOT NULL UNIQUE,
+	format_id INTEGER REFERENCES format(id),
+	tag_id INTEGER REFERENCES tag(id),
+	PRIMARY KEY(format_id, tag_id)
+);
