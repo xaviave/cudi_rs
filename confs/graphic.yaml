@@ -2,7 +2,7 @@ fps: 60
 width: 250
 height: 250
 window_name: "CUDI"
-loading_media: "data/init/loading.jpg"
+loading_media: "data/init/loading.jpeg"
 engine_shader:
   - "graphic_handler/shaders/cudi.vs"
   - "graphic_handler/shaders/cudi.fs"

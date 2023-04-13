@@ -71,55 +71,36 @@ pub struct PostgreSQLMedia {
 
 impl PostgreSQLMedia {
     fn query_data(&mut self) -> Vec<PathBuf> {
+        let formats = vec!["PNG", "JPEG"];
         let wanted_formats = format::table
-            .filter(format::name.eq("JPEG"))
+            .filter(format::name.eq_any(formats))
             .select(Format::as_select())
             .load(&mut self.connection)
             .expect("Failed request");
 
-        let wanted_tags = tag::table
-            .filter(tag::name.eq("TEST"))
-            .select(Tag::as_select())
-            .load(&mut self.connection)
-            .expect("Failed request");
-
-        let media_tags = media::table
-            .select(Media::as_select())
-            .load(&mut self.connection)
-            .expect("Failed request");
-
-        // let medias = Media::belonging_to(&wanted_formats)
-        //     .inner_join()
+        // all medias
+        // let media_tags = media::table
         //     .select(Media::as_select())
         //     .load(&mut self.connection)
         //     .expect("Failed request");
 
-        // let medias: Vec<(Tag, Vec<Media>)> = tags
-        //     .into_iter()
-        //     .zip(tags)
-        //     .map(|(m, t)| (m, t.into_iter().map(|(_, tag)| tag).collect()))
-        //     .collect();
-
-        println!("Displaying {} wanted_formats", wanted_formats.len());
-        for r in wanted_formats {
-            println!("{:?}", r);
-        }
-
-        println!("Displaying {} wanted_tags", wanted_tags.len());
-        for r in wanted_tags {
-            println!("{:?}", r);
-        }
-
-        println!("Displaying {} media_tags", media_tags.len());
-        for r in media_tags {
-            println!("{:?}", r);
-        }
-
-        // println!("Displaying {} medias", medias.len());
-        // for r in medias {
+        // println!("Displaying {} media_tags", media_tags.len());
+        // for r in media_tags {
         //     println!("{:?}", r);
         // }
-        vec![]
+
+        let tags = vec!["TEST", "oUI"];
+        // media with a specific format AND a specific tag
+        let medias_queue: Vec<PathBuf> = Media::belonging_to(&wanted_formats)
+            .inner_join(tag::table.on(tag::name.eq_any(tags)))
+            .select(Media::as_select())
+            .load(&mut self.connection)
+            .expect("Failed request")
+            .into_iter()
+            .map(|m| PathBuf::from(m.url))
+            .collect();
+
+        medias_queue
     }
 
     pub fn new(config: &MediaConfig) -> Self {

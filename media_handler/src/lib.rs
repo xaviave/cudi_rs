@@ -40,8 +40,8 @@ impl MediaHandler {
 
     pub fn new(config: MediaConfig, tx_graphic: Sender<Frame>, rx_graphic: Receiver<u8>) -> Self {
         // move media_paths to media_source
-        let mut media_source = MediaSource::Local(LocalMedia::new(&config));
-        // let mut media_source = MediaSource::DB(PostgreSQLMedia::new(&config));
+        // let mut media_source = MediaSource::Local(LocalMedia::new(&config));
+        let mut media_source = MediaSource::DB(PostgreSQLMedia::new(&config));
 
         let mut media_queue: Vec<Frame> = vec![];
         let (tx_downloader, rx_downloader) = mpsc::channel();
@@ -82,6 +82,8 @@ impl MediaHandler {
     }
 
     fn fill_media_queue(&mut self) {
+        // number of media is not well handled
+        // check mutex to count alive thread
         let media_needed = std::cmp::min(
             self.config.max_threads,
             self.config.max_threads - (self.media_queue.len() as u32),

@@ -55,12 +55,12 @@ This app is a display of the world, it will show you images with a particular ae
      - Filter
      - Mode (Cinema/Background/image with cudi in a plain rect see data/readme)
      - ~~Media path selector~~
-     - Tags
+     - Tags (WIP)
      - Animations
    - Custom parameter in UX
    - Show Music player
    - Show Music analysis window
-   - Media history (like/dislike) -> search engine w/ postgresql
+   - Media history (like/dislike) -> search engine w/ postgresql (WIP)
 3. External API (real-time data acquisition):
    - Download photos or videos from API such as Archillect, Tumblr ou Google Photos
    - Handle the Deezer or Youtube API to play music

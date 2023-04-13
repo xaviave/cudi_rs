@@ -30,6 +30,7 @@ def populate_empty_db():
     insert_tag_format_list(params, "format", [["PNG"], ["JPEG"], ["GIF"], ["BMP"], ["WEBP"]])
     insert_tag_format_list(params, "tag", [["TEST"]])
     insert_media(params, [["data/init/loading.jpeg", 2, 1]])
+    insert_media(params, [["data/img.jpeg", 1, 1]])
 
 
 def run():
