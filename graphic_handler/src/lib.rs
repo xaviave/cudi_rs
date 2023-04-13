@@ -1,7 +1,10 @@
+mod buffer_renderer;
+mod buffer_util;
 mod controls;
 mod gl_program;
 pub mod graphic_config;
 mod scene;
+mod texture_util;
 
 use controls::Controls;
 use gl_program::GlProgram;
@@ -181,6 +184,7 @@ impl GraphicContext {
                     }
 
                     if current_time.elapsed().as_millis() > self.config.fps {
+                        // println!("fps: {}", 1000 / current_time.elapsed().as_millis());
                         current_time = Instant::now();
                         next_media = true;
                         tx.send(1).unwrap();
@@ -207,8 +211,8 @@ impl GraphicContext {
 
                     // double buffer need 2 clear
                     let p = self.state.program().background_color;
-                    if need_clear > 0 || p != self.program.bg_color {
-                        self.program.bg_color = p;
+                    if need_clear > 0 || p != self.program.framebuffer_renderer.bg_color {
+                        self.program.framebuffer_renderer.bg_color = p;
                         self.program.clear(&self.gl);
                         need_clear -= 1;
                     }

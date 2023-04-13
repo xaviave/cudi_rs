@@ -4,7 +4,7 @@ pub mod media_source_api;
 pub mod schema;
 pub mod sql_models;
 
-use std::path::{self, PathBuf};
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -12,13 +12,6 @@ use std::thread;
 use frame::Frame;
 use media_config::MediaConfig;
 use media_source_api::{LocalMedia, MediaSource, PostgreSQLMedia};
-
-/*
-Add a strategy with a trait to handle different API or local downloading
-also for video, gif or image for the next_media iterator
-
-https://rust-unofficial.github.io/patterns/patterns/behavioural/strategy.html
- */
 
 pub struct MediaHandler {
     pub config: MediaConfig,
