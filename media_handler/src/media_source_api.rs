@@ -78,17 +78,6 @@ impl PostgreSQLMedia {
             .load(&mut self.connection)
             .expect("Failed request");
 
-        // all medias
-        // let media_tags = media::table
-        //     .select(Media::as_select())
-        //     .load(&mut self.connection)
-        //     .expect("Failed request");
-
-        // println!("Displaying {} media_tags", media_tags.len());
-        // for r in media_tags {
-        //     println!("{:?}", r);
-        // }
-
         let tags = vec!["TEST", "oUI"];
         // media with a specific format AND a specific tag
         let medias_queue: Vec<PathBuf> = Media::belonging_to(&wanted_formats)
