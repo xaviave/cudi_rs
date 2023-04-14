@@ -4,57 +4,8 @@ use glow::*;
 use iced_glow::glow;
 use iced_glow::Color;
 
-use crate::buffer_util::BufferUtil;
-use crate::scene::Scene;
-use crate::texture_util::TextureUtil;
-
-pub struct BufferRenderer {
-    pub vao: glow::VertexArray,
-    pub vbo: glow::NativeBuffer,
-    pub program: glow::Program,
-
-    pub scene: Scene,
-    pub bg_color: Color,
-}
-
-impl BufferUtil for BufferRenderer {}
-
-impl BufferRenderer {
-    pub fn new(
-        gl: &glow::Context,
-        vertex_path: &PathBuf,
-        fragment_path: &PathBuf,
-        ratio: f32,
-    ) -> Self {
-        let (program, vao, vbo) = Self::init_program_buffer(
-            gl,
-            vertex_path,
-            fragment_path,
-            &[3, 2],
-            &Self::get_vertex_array(),
-        );
-
-        let mut scene = Scene::new(gl, &program);
-        scene.ratio = ratio;
-
-        Self {
-            vao,
-            vbo,
-            program,
-            scene,
-            bg_color: Color::new(0., 0., 0., 1.),
-        }
-    }
-
-    pub fn cleanup(&self, gl: &glow::Context) {
-        unsafe {
-            gl.delete_program(self.program);
-            gl.delete_vertex_array(self.vao);
-            gl.delete_buffer(self.vbo);
-        }
-        // gl.delete_framebuffer(self.fbo);
-    }
-}
+use crate::gl_engine::buffer_util::BufferUtil;
+use crate::gl_engine::texture_util::TextureUtil;
 
 pub struct FramebufferRenderer {
     pub vao: glow::VertexArray,
@@ -148,6 +99,9 @@ impl FramebufferRenderer {
         fragment_path: &PathBuf,
         win_size: (i32, i32),
     ) -> Self {
+        /*
+            Create main program where all the other program will render in
+        */
         let (program, vao, vbo, fbo, color_texture_buffer) =
             Self::init_program_framebuffer(gl, vertex_path, fragment_path, win_size);
 
@@ -158,6 +112,19 @@ impl FramebufferRenderer {
             fbo,
             color_texture_buffer,
             bg_color: Color::new(0., 0., 0., 1.),
+        }
+    }
+
+    pub fn draw(&self, gl: &glow::Context) {
+        unsafe {
+            // 2. Bind default framebuffer, draw a plane and show the texture scene
+            gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+            gl.disable(glow::DEPTH_TEST);
+
+            gl.use_program(Some(self.program));
+            gl.bind_vertex_array(Some(self.vao));
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.color_texture_buffer));
+            gl.draw_arrays(glow::TRIANGLES, 0, 6)
         }
     }
 

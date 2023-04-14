@@ -1,13 +1,10 @@
-mod buffer_renderer;
-mod buffer_util;
 mod controls;
-mod gl_program;
+mod gl_engine;
 pub mod graphic_config;
 mod scene;
-mod texture_util;
 
+use crate::gl_engine::gl_program::GlProgram;
 use controls::Controls;
-use gl_program::GlProgram;
 use graphic_config::GraphicConfig;
 use media_handler::frame::Frame;
 
@@ -184,10 +181,10 @@ impl GraphicContext {
                     }
 
                     if current_time.elapsed().as_millis() > self.config.fps {
-                        // println!("fps: {}", 1000 / current_time.elapsed().as_millis());
+                        println!("fps: {}", 1000 / current_time.elapsed().as_millis());
                         current_time = Instant::now();
                         next_media = true;
-                        tx.send(1).unwrap();
+                        tx.send(self.config.renderer_size).unwrap();
                     }
                     self.windowed_context.window().request_redraw();
                 }
@@ -216,18 +213,7 @@ impl GraphicContext {
                         self.program.clear(&self.gl);
                         need_clear -= 1;
                     }
-                    self.program.draw(
-                        &self.gl,
-                        if next_media {
-                            match rx.recv() {
-                                Ok(f) => Some(f),
-                                Err(_) => None,
-                            }
-                        } else {
-                            None
-                        },
-                        viewport_ratio,
-                    );
+                    self.program.draw(&self.gl, &rx, next_media, viewport_ratio);
                     next_media = false;
 
                     // And then iced on top

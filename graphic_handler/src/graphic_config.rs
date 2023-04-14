@@ -14,6 +14,8 @@ pub struct GraphicConfig {
     pub fragment_path: PathBuf,
     pub fbo_vertex_path: PathBuf,
     pub fbo_fragment_path: PathBuf,
+
+    pub renderer_size: u8,
 }
 
 impl GraphicConfig {
@@ -44,6 +46,7 @@ impl GraphicConfig {
             fragment_path: Self::file_exist(cfg["engine_shader"][1].as_str().unwrap()),
             fbo_vertex_path: Self::file_exist(cfg["framebuffer_shader"][0].as_str().unwrap()),
             fbo_fragment_path: Self::file_exist(cfg["framebuffer_shader"][1].as_str().unwrap()),
+            renderer_size: cfg["renderer_size"].as_i64().unwrap() as u8,
         }
     }
 }

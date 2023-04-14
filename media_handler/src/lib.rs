@@ -35,6 +35,10 @@ impl MediaHandler {
         });
     }
 
+    // fn handle_media_queue(media_source, config: &MediaConfig) -> Vec<PathBuf> {
+    //        media_source.get_media_list(&config);
+    // }
+
     pub fn new(config: MediaConfig, tx_graphic: Sender<Frame>, rx_graphic: Receiver<u8>) -> Self {
         // move media_paths to media_source
         let mut media_source = MediaSource::Local(LocalMedia::new(&config));
@@ -78,7 +82,7 @@ impl MediaHandler {
     }
 
     fn handle_signal(&mut self, signal: u8) {
-        if signal == 1 {
+        for _ in 0..signal {
             self.tx_graphic
                 .send(self.media_queue.pop().unwrap())
                 .unwrap();

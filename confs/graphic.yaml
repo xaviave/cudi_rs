@@ -1,4 +1,4 @@
-fps: 30
+fps: 100
 width: 250
 height: 250
 window_name: "CUDI"
@@ -9,3 +9,4 @@ engine_shader:
 framebuffer_shader:
   - "graphic_handler/shaders/framebuffer.vs"
   - "graphic_handler/shaders/framebuffer.fs"
+renderer_size: 2
