@@ -1,6 +1,5 @@
 use std::sync::mpsc::Receiver;
 
-use rand;
 use rand::Rng;
 
 use glow::*;
@@ -104,7 +103,7 @@ impl GlProgram {
                     &config.vertex_path,
                     &config.fragment_path,
                     config.loading_media.ratio,
-                    // allow the first render and lock it 
+                    // allow the first render and lock it
                     true || self.first_render,
                 )
             })

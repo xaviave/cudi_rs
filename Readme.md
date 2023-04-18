@@ -119,5 +119,6 @@ Animation could be add to the screen:
 - [pixel sorting](<http://satyarth.me/articles/pixel-sorting/#:~:text=Pixel%20sorting%20is%20an%20interesting,(processing%20source%20code%20here).>)
 - video in background and cudi on the top on certains part of the screen (anonymisation instead of blurring)
 - check [compression artifact](https://en.wikipedia.org/wiki/Compression_artifact)
+  [here also](https://github.com/scriptkittie/GlitchKernel)
 
 ##### \*car chase, illegal japanese drift, race (boat, bike, car, plane, spaceship)

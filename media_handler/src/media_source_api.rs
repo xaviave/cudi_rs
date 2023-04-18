@@ -2,6 +2,8 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use diesel;
 
@@ -30,7 +32,7 @@ pub enum MediaSource {
 */
 
 impl MediaSource {
-    pub fn get_media_list(&mut self, config: &MediaConfig) -> Vec<PathBuf> {
+    pub fn get_media_list(&self, config: &MediaConfig) -> Vec<PathBuf> {
         match self {
             Self::Local(m) => m.get_media_list(&config),
             Self::DB(m) => m.get_media_list(&config),
@@ -57,7 +59,7 @@ impl LocalMedia {
         }
     }
 
-    pub fn get_media_list(&mut self, config: &MediaConfig) -> Vec<PathBuf> {
+    pub fn get_media_list(&self, config: &MediaConfig) -> Vec<PathBuf> {
         let mut rng = thread_rng();
         let mut x = self.media_paths.clone();
         x.shuffle(&mut rng);
@@ -66,16 +68,19 @@ impl LocalMedia {
 }
 
 pub struct PostgreSQLMedia {
-    connection: PgConnection,
+    connection: Arc<Mutex<PgConnection>>,
+    // connection: PgConnection,
 }
 
 impl PostgreSQLMedia {
-    fn query_data(&mut self) -> Vec<PathBuf> {
+    fn query_data(&self) -> Vec<PathBuf> {
+        let mut conn = self.connection.lock().unwrap();
+
         let formats = vec!["PNG", "JPEG"];
         let wanted_formats = format::table
             .filter(format::name.eq_any(formats))
             .select(Format::as_select())
-            .load(&mut self.connection)
+            .load(&mut *conn)
             .expect("Failed request");
 
         let tags = vec!["TEST", "oUI"];
@@ -83,7 +88,7 @@ impl PostgreSQLMedia {
         let medias_queue: Vec<PathBuf> = Media::belonging_to(&wanted_formats)
             .inner_join(tag::table.on(tag::name.eq_any(tags)))
             .select(Media::as_select())
-            .load(&mut self.connection)
+            .load(&mut *conn)
             .expect("Failed request")
             .into_iter()
             .map(|m| PathBuf::from(m.url))
@@ -96,10 +101,12 @@ impl PostgreSQLMedia {
         let connection = PgConnection::establish(&config.database_url)
             .unwrap_or_else(|_| panic!("Error connecting to {}", config.database_url));
 
-        Self { connection }
+        Self {
+            connection: Arc::new(Mutex::new(connection)),
+        }
     }
 
-    pub fn get_media_list(&mut self, config: &MediaConfig) -> Vec<PathBuf> {
+    pub fn get_media_list(&self, config: &MediaConfig) -> Vec<PathBuf> {
         self.query_data()
     }
 }
