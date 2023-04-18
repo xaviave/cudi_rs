@@ -17,12 +17,18 @@ This app is a display of the world, it will show you images with a particular ae
 
 - Install PostgreSQL:
 
+      linux:
       sudo apt install postgresql postgresql-client
 
+      windows:
+      setx PQ_LIB_DIR "C:\Program Files\PostgreSQL\15\lib"
+      install postgresql from their website
+
+- set this env
 
       echo DATABASE_URL=postgres://username:password@localhost/diesel_demo > .env
 
-  Create the database:
+- Create the database:
 
       CREATE ROLE gmx;
       CREATE DATABASE cudi_db;
