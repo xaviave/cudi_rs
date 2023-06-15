@@ -1,7 +1,6 @@
 mod controls;
 mod gl_engine;
 pub mod graphic_config;
-mod scene;
 
 use crate::gl_engine::gl_program::GlProgram;
 use controls::Controls;
@@ -67,9 +66,6 @@ impl GraphicContext {
                 gl.enable(glow::BLEND);
                 gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
 
-                // Disable multisampling by default
-                gl.disable(glow::MULTISAMPLE);
-
                 gl.enable(glow::DEPTH_TEST);
                 (gl, windowed_context)
             }
@@ -84,11 +80,7 @@ impl GraphicContext {
         let mut debug = Debug::new();
         let controls = Controls::new();
         let modifiers = glutin::event::ModifiersState::default();
-        let program = GlProgram::new(
-            &gl,
-            &config,
-            (physical_size.width as i32, physical_size.height as i32),
-        );
+        let program = GlProgram::new(&gl, &config);
         let cursor_position = glutin::dpi::PhysicalPosition::new(-1.0, -1.0);
         let clipboard = Clipboard::connect(windowed_context.window());
         let mut renderer =
@@ -113,14 +105,9 @@ impl GraphicContext {
         }
     }
 
-    pub fn launch_graphic(
-        mut self,
-        // mut media_handler: MediaHandler,
-        tx: Sender<u8>,
-        rx: Receiver<Frame>,
-    ) {
+    pub fn launch_graphic(mut self, tx: Sender<u8>, rx: Receiver<Frame>) {
         let mut need_clear: u8 = 1;
-        let mut next_media = false;
+        let mut need_refresh = false;
         let mut current_time = Instant::now();
         let mut viewport_size = self.windowed_context.window().inner_size();
         let mut viewport_ratio = viewport_size.width as f32 / viewport_size.height as f32;
@@ -181,9 +168,9 @@ impl GraphicContext {
                     }
 
                     if current_time.elapsed().as_millis() > self.config.fps {
-                        println!("fps: {}", 1000 / current_time.elapsed().as_millis());
+                        // println!("fps: {}", 1000 / current_time.elapsed().as_millis());
                         current_time = Instant::now();
-                        next_media = true;
+                        need_refresh = true;
                         tx.send(self.config.renderer_size).unwrap();
                     }
                     self.windowed_context.window().request_redraw();
@@ -200,8 +187,12 @@ impl GraphicContext {
                                 viewport_size.height as i32,
                             );
                         }
-                        self.program
-                            .resize_buffer(&self.gl, viewport_size.into(), &self.config);
+                        self.program.resize_buffer(
+                            &self.gl,
+                            viewport_size.into(),
+                            viewport_ratio,
+                            &self.config,
+                        );
                         self.resized = false;
                         need_clear = 2;
                     }
@@ -211,10 +202,15 @@ impl GraphicContext {
                     if need_clear > 0 || p != self.program.framebuffer_renderer.bg_color {
                         self.program.framebuffer_renderer.bg_color = p;
                         self.program.clear(&self.gl);
-                        need_clear -= 1;
+                        if need_clear == 0 {
+                            println!("Warning, need_clear = 0");
+                            need_clear = 1;
+                        } else {
+                            need_clear -= 1;
+                        }
                     }
-                    self.program.draw(&self.gl, &rx, next_media, viewport_ratio);
-                    next_media = false;
+                    self.program.draw(&self.gl, &rx, need_refresh, p);
+                    need_refresh = false;
 
                     // And then iced on top
                     self.renderer.with_primitives(|backend, primitive| {

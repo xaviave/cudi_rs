@@ -1,28 +1,27 @@
 use std::sync::mpsc::Receiver;
 
-use rand::Rng;
+use iced_winit::Color;
 
 use glow::*;
 use iced_glow::glow;
 
 use crate::gl_engine::buffer_renderer::BufferRenderer;
 use crate::gl_engine::framebuffer_renderer::FramebufferRenderer;
-use crate::gl_engine::texture_util::TextureUtil;
 use crate::graphic_config::GraphicConfig;
 use media_handler::frame::Frame;
 
 use nalgebra_glm::vec3;
+use rand::Rng;
 
 pub struct GlProgram {
     first_render: bool,
-    texture: glow::NativeTexture,
+
     pub main_renderers: Vec<BufferRenderer>,
     pub framebuffer_renderer: FramebufferRenderer,
 }
-impl TextureUtil for GlProgram {}
 
 impl GlProgram {
-    pub fn new(gl: &glow::Context, config: &GraphicConfig, win_size: (i32, i32)) -> Self {
+    pub fn new(gl: &glow::Context, config: &GraphicConfig) -> Self {
         unsafe {
             /*
                 -> The first render is trigger by `resize_buffer` due to iced
@@ -39,14 +38,12 @@ impl GlProgram {
                 &config.fbo_fragment_path,
                 (1, 1),
             );
-            let texture = Self::init_texture(gl);
 
             gl.use_program(None);
             Self {
-                first_render: false,
+                first_render: true,
                 main_renderers,
                 framebuffer_renderer,
-                texture,
             }
         }
     }
@@ -55,35 +52,17 @@ impl GlProgram {
         &mut self,
         gl: &glow::Context,
         rx: &Receiver<Frame>,
-        next_media: bool,
-        viewport_ratio: f32,
+        need_refresh: bool,
+        ux_data: Color,
     ) {
-        let mut rng = rand::thread_rng();
-
-        let mut ratio = 0.;
+        // let mut rng = rand::thread_rng();
         for r in &mut self.main_renderers {
-            // for each renderers, ask a different media
-            let media = if next_media && r.update_media {
-                match rx.recv() {
-                    Ok(f) => Some(f),
-                    Err(_) => None,
-                }
-            } else {
-                None
-            };
-            if let Some(m) = media {
-                ratio = m.ratio;
-                Self::generate_texture(gl, self.texture, &m);
-            }
-
-            r.update_scene_data(
-                ratio,
-                vec3(rng.gen_range(-1.2..1.2), rng.gen_range(-1.2..1.2), 1.),
-            );
+            // r.update_scene_data(vec3(rng.gen_range(-1.2..1.2), rng.gen_range(-1.2..1.2), 1.));
+            /* optionnal | need to move */
             unsafe {
                 gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer_renderer.fbo));
             }
-            r.draw(gl, self.texture, viewport_ratio);
+            r.draw(gl, rx, need_refresh, ux_data);
         }
         self.framebuffer_renderer.draw(gl);
     }
@@ -92,19 +71,19 @@ impl GlProgram {
         &mut self,
         gl: &glow::Context,
         win_size: (i32, i32),
+        viewport_ratio: f32,
         config: &GraphicConfig,
     ) {
         self.cleanup(gl);
-        // doesn't work for static media if resize || it will be reset and not re render with the unique texture
         self.main_renderers = (0..config.renderer_size)
-            .map(|_| {
+            .map(|i| {
                 BufferRenderer::new(
                     gl,
-                    &config.vertex_path,
-                    &config.fragment_path,
-                    config.loading_media.ratio,
-                    // allow the first render and lock it
-                    true || self.first_render,
+                    i,
+                    &config,
+                    viewport_ratio,
+                    // allow the first render and lock it || find a way to change it for cudi renderer
+                    false,
                 )
             })
             .collect();
@@ -115,14 +94,13 @@ impl GlProgram {
             &config.fbo_fragment_path,
             win_size,
         );
-        self.texture = Self::init_texture(gl);
 
-        // clear framebuffer that will be display
         unsafe {
+            // clear framebuffer that will be display
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer_renderer.fbo));
         }
         self.clear(gl);
-        self.first_render = true;
+        self.first_render = false;
     }
 
     pub fn clear(&self, gl: &glow::Context) {
@@ -134,10 +112,6 @@ impl GlProgram {
     }
 
     pub fn cleanup(&self, gl: &glow::Context) {
-        unsafe {
-            gl.delete_texture(self.texture);
-        }
-
         for r in &self.main_renderers {
             r.cleanup(gl)
         }

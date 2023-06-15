@@ -43,7 +43,7 @@ impl Program for Controls {
             .width(500)
             .spacing(20)
             .push(
-                Slider::new(0.0..=1.0, background_color.r, move |r| {
+                Slider::new(-10.0..=10.0, background_color.r, move |r| {
                     Message::BackgroundColorChanged(Color {
                         r,
                         ..background_color
@@ -52,7 +52,7 @@ impl Program for Controls {
                 .step(0.01),
             )
             .push(
-                Slider::new(0.0..=1.0, background_color.g, move |g| {
+                Slider::new(-10.0..=10.0, background_color.g, move |g| {
                     Message::BackgroundColorChanged(Color {
                         g,
                         ..background_color
@@ -61,7 +61,7 @@ impl Program for Controls {
                 .step(0.01),
             )
             .push(
-                Slider::new(0.0..=1.0, background_color.b, move |b| {
+                Slider::new(-10.0..=10.0, background_color.b, move |b| {
                     Message::BackgroundColorChanged(Color {
                         b,
                         ..background_color

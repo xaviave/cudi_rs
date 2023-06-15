@@ -120,10 +120,12 @@ impl FramebufferRenderer {
             // 2. Bind default framebuffer, draw a plane and show the texture scene
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
             gl.disable(glow::DEPTH_TEST);
+            gl.clear(glow::DEPTH_BUFFER_BIT | glow::COLOR_BUFFER_BIT);
 
             gl.use_program(Some(self.program));
             gl.bind_vertex_array(Some(self.vao));
             gl.bind_texture(glow::TEXTURE_2D, Some(self.color_texture_buffer));
+            gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
             gl.draw_arrays(glow::TRIANGLES, 0, 6)
         }
     }

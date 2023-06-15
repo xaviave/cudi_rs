@@ -1,0 +1,68 @@
+# Blender 3.4.1 MTL File: 'None'
+# www.blender.org
+
+newmtl IDP_Pot
+Ns 96.078453
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd textures/indoor_plant_2_NOR.jpg
+map_Ks textures/indoor_plant_2_COL.jpg
+map_Bump textures/indoor_plant_2_NOR.jpg
+
+newmtl IDP_ground
+Ns 96.078453
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd textures/indoor_plant_2_NOR.jpg
+map_Bump textures/indoor_plant_2_NOR.jpg
+
+newmtl IDP_leaves
+Ns 96.078453
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd textures/indoor_plant_2_COL.jpg
+map_Ks textures/indoor_plant_2_COL.jpg
+map_Bump textures/indoor_plant_2_NOR.jpg
+
+newmtl IDP_leaves_indoor_plant_2_NOR.jpg
+Ns 96.078453
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd textures/indoor_plant_2_NOR.jpg
+map_Ks textures/indoor_plant_2_COL.jpg
+map_Bump textures/indoor_plant_2_NOR.jpg
+
+newmtl IDP_root
+Ns 96.078453
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd textures/indoor_plant_2_COL.jpg
+map_Ks textures/indoor_plant_2_COL.jpg
+map_Bump textures/indoor_plant_2_NOR.jpg
+
+newmtl IDP_root_indoor_plant_2_NOR.jpg
+Ns 96.078453
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd textures/indoor_plant_2_NOR.jpg
+map_Ks textures/indoor_plant_2_COL.jpg
+map_Bump textures/indoor_plant_2_NOR.jpg

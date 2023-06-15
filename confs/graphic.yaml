@@ -1,12 +1,15 @@
-fps: 31
+fps: 60
 width: 250
 height: 250
 window_name: "CUDI"
 loading_media: "data/init/loading.jpeg"
 engine_shader:
-  - "graphic_handler/shaders/cudi.vs"
-  - "graphic_handler/shaders/cudi.fs"
+  - "graphic_handler/shaders/engine.vs"
+  - "graphic_handler/shaders/engine.fs"
 framebuffer_shader:
   - "graphic_handler/shaders/framebuffer.vs"
   - "graphic_handler/shaders/framebuffer.fs"
-renderer_size: 3
+renderer_size: 1
+scenes:
+  - "data/objs/indoor_plant_02.obj"
+  # - "data/objs/s1.obj"

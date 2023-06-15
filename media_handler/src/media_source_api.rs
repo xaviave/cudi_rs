@@ -69,7 +69,6 @@ impl LocalMedia {
 
 pub struct PostgreSQLMedia {
     connection: Arc<Mutex<PgConnection>>,
-    // connection: PgConnection,
 }
 
 impl PostgreSQLMedia {
