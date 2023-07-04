@@ -4,5 +4,6 @@ pub mod framebuffer_renderer;
 pub mod gl_program;
 pub mod light;
 pub mod material;
+pub mod model;
 pub mod scene;
 pub mod texture_util;

@@ -5,8 +5,8 @@ use iced_winit::Color;
 use glow::*;
 use iced_glow::glow;
 
-use crate::gl_engine::buffer_renderer::BufferRenderer;
 use crate::gl_engine::framebuffer_renderer::FramebufferRenderer;
+use crate::gl_engine::scene::Scene;
 use crate::graphic_config::GraphicConfig;
 use media_handler::frame::Frame;
 
@@ -16,7 +16,7 @@ use rand::Rng;
 pub struct GlProgram {
     first_render: bool,
 
-    pub main_renderers: Vec<BufferRenderer>,
+    pub main_scenes: Vec<Scene>,
     pub framebuffer_renderer: FramebufferRenderer,
 }
 
@@ -31,7 +31,7 @@ impl GlProgram {
                 Create dummy framebuffer program
                 Create the main texture
             */
-            let main_renderers = vec![];
+            let main_scenes = vec![];
             let framebuffer_renderer = FramebufferRenderer::new(
                 gl,
                 &config.fbo_vertex_path,
@@ -42,7 +42,7 @@ impl GlProgram {
             gl.use_program(None);
             Self {
                 first_render: true,
-                main_renderers,
+                main_scenes,
                 framebuffer_renderer,
             }
         }
@@ -55,14 +55,27 @@ impl GlProgram {
         need_refresh: bool,
         ux_data: Color,
     ) {
+        unsafe {
+            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer_renderer.fbo));
+            gl.enable(glow::DEPTH_TEST);
+            let mut mask = glow::DEPTH_BUFFER_BIT;
+            // if !self.update_media {
+            if need_refresh {
+                mask |= glow::COLOR_BUFFER_BIT;
+                gl.clear_color(0., 0., 0., 1.);
+            }
+            gl.clear(mask);
+        }
         // let mut rng = rand::thread_rng();
-        for r in &mut self.main_renderers {
+        for (i, s) in &mut self.main_scenes.iter_mut().enumerate() {
             // r.update_scene_data(vec3(rng.gen_range(-1.2..1.2), rng.gen_range(-1.2..1.2), 1.));
             /* optionnal | need to move */
-            unsafe {
-                gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer_renderer.fbo));
+
+            if i == 0 {
+                // s.clean_screen(gl);
             }
-            r.draw(gl, rx, need_refresh, ux_data);
+
+            s.draw(gl, rx, need_refresh, ux_data);
         }
         self.framebuffer_renderer.draw(gl);
     }
@@ -75,9 +88,9 @@ impl GlProgram {
         config: &GraphicConfig,
     ) {
         self.cleanup(gl);
-        self.main_renderers = (0..config.renderer_size)
+        self.main_scenes = (0..config.renderer_size)
             .map(|i| {
-                BufferRenderer::new(
+                Scene::new(
                     gl,
                     i,
                     &config,
@@ -110,10 +123,9 @@ impl GlProgram {
             gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
         }
     }
-
-    pub fn cleanup(&self, gl: &glow::Context) {
-        for r in &self.main_renderers {
-            r.cleanup(gl)
+    pub fn cleanup(&mut self, gl: &glow::Context) {
+        for s in &mut self.main_scenes {
+            s.cleanup(gl)
         }
         self.framebuffer_renderer.cleanup(gl);
     }

@@ -9,7 +9,7 @@ engine_shader:
 framebuffer_shader:
   - "graphic_handler/shaders/framebuffer.vs"
   - "graphic_handler/shaders/framebuffer.fs"
-renderer_size: 1
+renderer_size: 2
 scenes:
   - "data/objs/indoor_plant_02.obj"
-  # - "data/objs/s1.obj"
+  - "data/objs/s1.obj"

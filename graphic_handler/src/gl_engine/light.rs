@@ -38,8 +38,9 @@ impl Light {
         }
     }
 
-    pub fn update_light(&self, gl: &Context) {
+    pub fn update_light(&self, gl: &Context, program: NativeProgram) {
         unsafe {
+            gl.use_program(Some(program));
             gl.uniform_3_f32_slice(self.position_loc.as_ref(), self.position.as_slice());
             gl.uniform_3_f32_slice(self.direction_loc.as_ref(), self.direction.as_slice());
             gl.uniform_3_f32_slice(self.ambient_loc.as_ref(), self.ambient.as_slice());

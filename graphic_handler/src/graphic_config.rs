@@ -20,7 +20,8 @@ pub struct GraphicConfig {
     pub fragment_path: PathBuf,
     pub fbo_vertex_path: PathBuf,
     pub fbo_fragment_path: PathBuf,
-    pub scenes: Vec<Obj>,
+    // pub scenes: Vec<Obj>,
+    pub scenes: Vec<String>,
 }
 
 impl GraphicConfig {
@@ -42,14 +43,6 @@ impl GraphicConfig {
         )
         .unwrap()[0];
 
-        let raw_obj = raw::parse_obj(BufReader::new(
-            File::open("data/objs/indoor_plant_02.obj").unwrap(),
-        ))
-        .unwrap();
-        println!("{:?}", raw_obj.material_libraries);
-        println!("{:?}", raw_obj.meshes);
-        // panic!();
-
         Self {
             fps: (1000 / cfg["fps"].as_i64().unwrap()) as u128,
             width: cfg["width"].as_i64().unwrap() as u32,
@@ -62,13 +55,19 @@ impl GraphicConfig {
             fbo_fragment_path: Self::file_exist(cfg["framebuffer_shader"][1].as_str().unwrap()),
             renderer_size: cfg["renderer_size"].as_i64().unwrap() as u8,
             // will panic if the file is not founded or the Obj file is bad.
+            // scenes: cfg["scenes"]
+            //     .as_vec()
+            //     .unwrap()
+            //     .iter()
+            //     .map(|f| {
+            //         load_obj(BufReader::new(File::open(f.as_str().unwrap()).unwrap())).unwrap()
+            //     })
+            //     .collect(),
             scenes: cfg["scenes"]
                 .as_vec()
                 .unwrap()
                 .iter()
-                .map(|f| {
-                    load_obj(BufReader::new(File::open(f.as_str().unwrap()).unwrap())).unwrap()
-                })
+                .map(|f| String::from(f.as_str().unwrap()))
                 .collect(),
         }
     }
