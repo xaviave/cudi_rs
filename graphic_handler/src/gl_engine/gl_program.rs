@@ -31,7 +31,16 @@ impl GlProgram {
                 Create dummy framebuffer program
                 Create the main texture
             */
-            let main_scenes = vec![];
+
+            let main_scenes = (0..config.renderer_size)
+                .map(|i| {
+                    Scene::new(
+                        gl, i, &config, 1.,
+                        // allow the first render and lock it || find a way to change it for cudi renderer
+                        false,
+                    )
+                })
+                .collect();
             let framebuffer_renderer = FramebufferRenderer::new(
                 gl,
                 &config.fbo_vertex_path,
@@ -67,14 +76,9 @@ impl GlProgram {
             gl.clear(mask);
         }
         // let mut rng = rand::thread_rng();
-        for (i, s) in &mut self.main_scenes.iter_mut().enumerate() {
+        for s in &mut self.main_scenes {
             // r.update_scene_data(vec3(rng.gen_range(-1.2..1.2), rng.gen_range(-1.2..1.2), 1.));
             /* optionnal | need to move */
-
-            if i == 0 {
-                // s.clean_screen(gl);
-            }
-
             s.draw(gl, rx, need_refresh, ux_data);
         }
         self.framebuffer_renderer.draw(gl);
@@ -88,18 +92,11 @@ impl GlProgram {
         config: &GraphicConfig,
     ) {
         self.cleanup(gl);
-        self.main_scenes = (0..config.renderer_size)
-            .map(|i| {
-                Scene::new(
-                    gl,
-                    i,
-                    &config,
-                    viewport_ratio,
-                    // allow the first render and lock it || find a way to change it for cudi renderer
-                    false,
-                )
-            })
-            .collect();
+        for s in &mut self.main_scenes {
+            s.cleanup(gl);
+            s.init_gl_component(gl, config);
+            s.update_projection(viewport_ratio);
+        }
 
         self.framebuffer_renderer = FramebufferRenderer::new(
             gl,

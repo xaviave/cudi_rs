@@ -54,12 +54,10 @@ impl Scene {
         viewport_ratio: f32,
         update_media: bool,
     ) -> Self {
-        let program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
-
-        let raw_obj = raw::parse_obj(BufReader::new(
-            File::open(&config.scenes[index as usize]).unwrap(),
-        ))
-        .unwrap();
+        // let raw_obj = raw::parse_obj(BufReader::new(
+        //     File::open(&config.scenes[index as usize]).unwrap(),
+        // ))
+        // .unwrap();
 
         let obj: Obj = load_obj(BufReader::new(
             File::open(&config.scenes[index as usize]).unwrap(),
@@ -144,15 +142,19 @@ impl Scene {
         //         update_media,
         //     ));
         // }
-        let models = Model::new(
-            gl,
-            program,
-            raw_vertex,
-            raw_indices.to_vec(),
-            Material::new(gl, program),
-            update_media,
-        );
+
+        let program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
+
         unsafe {
+            gl.use_program(Some(program));
+            let models = Model::new(
+                gl,
+                raw_vertex,
+                raw_indices.to_vec(),
+                Material::new(gl, program),
+                update_media,
+            );
+
             Self {
                 time: Instant::now(),
                 viewport_ratio,
@@ -174,6 +176,11 @@ impl Scene {
                 projection_loc: gl.get_uniform_location(program, "projection"),
             }
         }
+    }
+
+    pub fn update_projection(&mut self, viewport_ratio: f32) {
+        self.viewport_ratio = viewport_ratio;
+        self.projection_mat = perspective(viewport_ratio, (45_f32).to_radians(), 0.1, 100.0);
     }
 
     fn update_matrix(&mut self, gl: &glow::Context, ux_value: Color) {
@@ -231,6 +238,16 @@ impl Scene {
         self.update_matrix(gl, ux_value);
         for m in &mut self.models {
             m.draw(gl, self.program, rx);
+        }
+    }
+
+    pub fn init_gl_component(&mut self, gl: &glow::Context, config: &GraphicConfig) {
+        self.program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
+        unsafe {
+            gl.use_program(Some(self.program));
+            for m in &mut self.models {
+                m.init_gl_component(gl);
+            }
         }
     }
 

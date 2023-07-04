@@ -25,23 +25,18 @@ impl TextureUtil for Model {}
 impl Model {
     pub fn new(
         gl: &Context,
-        program: NativeProgram,
         raw_vertex_buffer: Vec<f32>,
         raw_indices_buffer: Vec<i32>,
         material_data: Material,
         update_media: bool,
     ) -> Self {
-        unsafe {
-            gl.use_program(Some(program));
-
-            Self {
-                raw_vertex_buffer: raw_vertex_buffer.clone(),
-                raw_indices_buffer: raw_indices_buffer.clone(),
-                material_data,
-                update_media,
-                gl_buffer: BufferRenderer::new(gl, &raw_vertex_buffer, &raw_indices_buffer),
-                texture: Self::init_texture(gl),
-            }
+        Self {
+            raw_vertex_buffer: raw_vertex_buffer.clone(),
+            raw_indices_buffer: raw_indices_buffer.clone(),
+            material_data,
+            update_media,
+            gl_buffer: BufferRenderer::new(gl, &raw_vertex_buffer, &raw_indices_buffer),
+            texture: Self::init_texture(gl),
         }
     }
 
@@ -83,6 +78,11 @@ impl Model {
 
         // let mut child = Command::new("sleep").arg("0.01").spawn().unwrap();
         // let _result = child.wait().unwrap();
+    }
+
+    pub fn init_gl_component(&mut self, gl: &glow::Context) {
+        self.gl_buffer = BufferRenderer::new(gl, &self.raw_vertex_buffer, &self.raw_indices_buffer);
+        self.texture = Model::init_texture(gl);
     }
 
     pub fn cleanup(&self, gl: &glow::Context) {
