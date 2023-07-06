@@ -1,5 +1,8 @@
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
+use std::path::Path;
 use std::sync::mpsc::Receiver;
 use std::time::Instant;
 
@@ -9,14 +12,12 @@ use iced_glow::Color;
 use media_handler::frame::Frame;
 use nalgebra_glm::perspective;
 use nalgebra_glm::rotation;
-use obj::load_obj;
 use obj::raw;
 use obj::raw::object::Polygon;
-use obj::Obj;
 
 use crate::gl_engine::buffer_util::BufferUtil;
 use crate::gl_engine::light::Light;
-use crate::gl_engine::material::Material;
+use crate::gl_engine::material::CMaterial;
 use crate::gl_engine::model::Model;
 use crate::graphic_config::GraphicConfig;
 use nalgebra_glm::{scale, translate, translation, vec3, TMat4, TVec3};
@@ -54,106 +55,84 @@ impl Scene {
         viewport_ratio: f32,
         update_media: bool,
     ) -> Self {
-        // let raw_obj = raw::parse_obj(BufReader::new(
-        //     File::open(&config.scenes[index as usize]).unwrap(),
-        // ))
-        // .unwrap();
-
-        let obj: Obj = load_obj(BufReader::new(
-            File::open(&config.scenes[index as usize]).unwrap(),
-        ))
-        .unwrap();
         /*
             Create graphic program
             Create the render scene
         */
-        let raw_indices: Vec<i32> = obj.indices.clone().into_iter().map(|e| e as i32).collect();
-        // [x, y, z, nx, ny, nz, tx, ty, (tz)]
-        let raw_vertex: Vec<f32> = obj
-            .vertices
-            .clone()
-            .into_iter()
-            .map(|v| {
-                vec![
-                    v.position[0],
-                    v.position[1],
-                    v.position[2],
-                    v.normal[0],
-                    v.normal[1],
-                    v.normal[2],
-                    0.,
-                    0.,
-                    // 0.,
-                    // v.texture[0],
-                    // v.texture[1],
-                    // v.texture[2],
-                ]
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-            .flatten()
-            .collect();
 
-        // let mut models = vec![];
-        // for (n, r) in &raw_obj.meshes {
-        //     println!("{} | {:?}", n, r);
+        let raw_obj = raw::parse_obj(BufReader::new(
+            File::open(&config.scenes[index as usize]).unwrap(),
+        ))
+        .unwrap();
 
-        //     let mut raw_indices: Vec<i32> = vec![];
-        //     let mut raw_vertex: Vec<f32> = vec![];
-        //     for x in &r.polygons {
-        //         let a = &raw_obj.polygons[x.start..x.end];
-        //         let idx = a
-        //             .into_iter()
-        //             .map(|v| match v {
-        //                 Polygon::PTN(vec) => [vec[0].0, vec[1].0, vec[2].0],
-        //                 _ => panic!(),
-        //             })
-        //             .collect::<Vec<_>>()
-        //             .into_iter()
-        //             .flatten()
-        //             .collect::<Vec<_>>();
-        //         for i in idx {
-        //             raw_indices.push(obj.indices[i] as i32);
-        //             raw_vertex.append(&mut {
-        //                 let v = obj.vertices[i];
-        //                 vec![
-        //                     v.position[0],
-        //                     v.position[1],
-        //                     v.position[2],
-        //                     v.normal[0],
-        //                     v.normal[1],
-        //                     v.normal[2],
-        //                     0.,
-        //                     0.,
-        //                     // 0.,
-        //                     // v.texture[0],
-        //                     // v.texture[1],
-        //                     // v.texture[2],
-        //                 ]
-        //             });
-        //         }
-        //     }
-        //     models.push(Model::new(
-        //         gl,
-        //         program,
-        //         raw_vertex,
-        //         raw_indices,
-        //         Material::new(gl, program),
-        //         update_media,
-        //     ));
-        // }
+        let mtl_path = Path::new(&config.scenes[index as usize])
+            .parent()
+            .unwrap()
+            .join(&raw_obj.material_libraries[0]);
+        let raw_materials = raw::parse_mtl(BufReader::new(File::open(mtl_path).unwrap())).unwrap();
 
         let program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
 
-        unsafe {
-            gl.use_program(Some(program));
-            let models = Model::new(
+        let mut cache = HashMap::new();
+        let mut map = |pi: usize,
+                       ni: usize,
+                       ti: usize,
+                       raw_vertex: &mut Vec<f32>,
+                       raw_indices: &mut Vec<i32>| {
+            // Look up cache
+            let index = match cache.entry((pi, ni, ti)) {
+                // Cache miss -> make new, store it on cache
+                Entry::Vacant(entry) => {
+                    let p = raw_obj.positions[pi];
+                    let n = raw_obj.normals[ni];
+                    // let t = raw_obj.tex_coords[ti];
+                    let vertex = vec![
+                        p.0, p.1, p.2, //
+                        n.0, n.1, n.2, //
+                        0., 0., // 0.,
+                            // t.0, t.1, t.2
+                    ];
+                    let index = raw_vertex.len() / 8;
+                    raw_vertex.extend(vertex);
+                    entry.insert(index);
+                    index
+                }
+                // Cache hit -> use it
+                Entry::Occupied(entry) => *entry.get(),
+            };
+            raw_indices.push(index as i32);
+        };
+
+        let mut models = vec![];
+        for (n, r) in &raw_obj.meshes {
+            let mut raw_indices: Vec<i32> = vec![];
+            let mut raw_vertex: Vec<f32> = vec![];
+            for x in r.polygons.iter() {
+                let polygons = &raw_obj.polygons[x.start..x.end];
+                for p in polygons.into_iter() {
+                    match p {
+                        Polygon::PTN(vec) => {
+                            for &(pi, ti, ni) in vec {
+                                map(pi, ni, ti, &mut raw_vertex, &mut raw_indices);
+                            }
+                        }
+                        _ => panic!(),
+                    }
+                }
+            }
+
+            println!("Parsing mtl: {} {:?}", n, r);
+            models.push(Model::new(
                 gl,
                 raw_vertex,
-                raw_indices.to_vec(),
-                Material::new(gl, program),
+                raw_indices,
+                CMaterial::new(gl, program, &raw_materials.materials[n]),
                 update_media,
-            );
+            ));
+        }
+
+        unsafe {
+            gl.use_program(Some(program));
 
             Self {
                 time: Instant::now(),
@@ -163,7 +142,8 @@ impl Scene {
                 bg_color: Color::new(0., 0., 0., 1.),
                 light_data: Light::new(gl, &program),
 
-                models: vec![models],
+                models,
+                // models: vec![models],
                 last_position: vec3(0., 0., 0.),
                 model_mat: translation(&(vec3(0., -1., -5.)))
                     * rotation(90.0_f32.to_radians(), &(vec3(0., 1.0, 0.0).normalize())),

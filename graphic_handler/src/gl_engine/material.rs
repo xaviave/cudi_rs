@@ -2,8 +2,11 @@ use glow::*;
 use iced_glow::glow;
 use nalgebra_glm::vec3;
 use nalgebra_glm::Vec3;
+use obj::raw::material::Material;
+use obj::raw::material::MtlColor;
+use obj::raw::material::MtlColor::Rgb;
 
-pub struct Material {
+pub struct CMaterial {
     ambient: Vec3,
     diffuse: Vec3,
     specular: Vec3,
@@ -15,14 +18,32 @@ pub struct Material {
     shininess_loc: Option<NativeUniformLocation>,
 }
 
-impl Material {
-    pub fn new(gl: &Context, program: NativeProgram) -> Self {
+impl CMaterial {
+    fn get_color(c: &Option<MtlColor>) -> Vec3 {
+        match c {
+            Some(color) => match color {
+                Rgb(r, g, b) => vec3(*r, *g, *b),
+                _ => panic!("Not rgb color"),
+            },
+            _ => vec3(0., 0., 0.),
+        }
+    }
+
+    pub fn new(gl: &Context, program: NativeProgram, raw_material: &Material) -> Self {
+        println!("{:?}", raw_material);
+        let ambient = Self::get_color(&raw_material.ambient);
+        let diffuse = Self::get_color(&raw_material.diffuse);
+        let specular = Self::get_color(&raw_material.specular);
+        let shininess = match raw_material.specular_exponent {
+            Some(ns) => ns,
+            _ => panic!("No Ns parameter"),
+        };
         unsafe {
             Self {
-                ambient: vec3(1., 0.5, 0.31),
-                diffuse: vec3(1., 0.5, 0.31),
-                specular: vec3(0.5, 0.5, 0.5),
-                shininess: 32.0,
+                ambient,
+                diffuse,
+                specular,
+                shininess,
                 ambient_loc: gl.get_uniform_location(program, "material.ambient"),
                 diffuse_loc: gl.get_uniform_location(program, "material.diffuse"),
                 specular_loc: gl.get_uniform_location(program, "material.specular"),

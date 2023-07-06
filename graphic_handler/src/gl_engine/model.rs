@@ -1,11 +1,10 @@
-use std::{process::Command, sync::mpsc::Receiver};
+use std::sync::mpsc::Receiver;
 
 use glow::*;
 use iced_glow::glow;
-use iced_winit::program;
 use media_handler::frame::Frame;
 
-use crate::gl_engine::material::Material;
+use crate::gl_engine::material::CMaterial;
 
 use super::{buffer_renderer::BufferRenderer, texture_util::TextureUtil};
 
@@ -13,7 +12,7 @@ pub struct Model {
     pub raw_vertex_buffer: Vec<f32>,
     pub raw_indices_buffer: Vec<i32>,
 
-    pub material_data: Material,
+    pub material_data: CMaterial,
     pub update_media: bool,
 
     pub gl_buffer: BufferRenderer,
@@ -27,7 +26,7 @@ impl Model {
         gl: &Context,
         raw_vertex_buffer: Vec<f32>,
         raw_indices_buffer: Vec<i32>,
-        material_data: Material,
+        material_data: CMaterial,
         update_media: bool,
     ) -> Self {
         Self {

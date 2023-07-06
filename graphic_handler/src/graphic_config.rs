@@ -1,10 +1,5 @@
 use media_handler::frame::Frame;
-use obj::{load_obj, raw, Obj};
-use std::{
-    fs::{self, File},
-    io::BufReader,
-    path::PathBuf,
-};
+use std::{fs, path::PathBuf};
 use yaml_rust::YamlLoader;
 
 #[derive(Debug)]
@@ -54,15 +49,6 @@ impl GraphicConfig {
             fbo_vertex_path: Self::file_exist(cfg["framebuffer_shader"][0].as_str().unwrap()),
             fbo_fragment_path: Self::file_exist(cfg["framebuffer_shader"][1].as_str().unwrap()),
             renderer_size: cfg["renderer_size"].as_i64().unwrap() as u8,
-            // will panic if the file is not founded or the Obj file is bad.
-            // scenes: cfg["scenes"]
-            //     .as_vec()
-            //     .unwrap()
-            //     .iter()
-            //     .map(|f| {
-            //         load_obj(BufReader::new(File::open(f.as_str().unwrap()).unwrap())).unwrap()
-            //     })
-            //     .collect(),
             scenes: cfg["scenes"]
                 .as_vec()
                 .unwrap()
