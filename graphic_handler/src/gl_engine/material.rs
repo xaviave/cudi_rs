@@ -30,7 +30,6 @@ impl CMaterial {
     }
 
     pub fn new(gl: &Context, program: NativeProgram, raw_material: &Material) -> Self {
-        println!("{:?}", raw_material);
         let ambient = Self::get_color(&raw_material.ambient);
         let diffuse = Self::get_color(&raw_material.diffuse);
         let specular = Self::get_color(&raw_material.specular);

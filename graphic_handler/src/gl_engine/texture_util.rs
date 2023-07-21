@@ -2,6 +2,8 @@ use glow::*;
 use iced_glow::glow;
 use media_handler::frame::Frame;
 
+use super::gl_error::gl_error;
+
 pub trait TextureUtil {
     fn init_texture(gl: &glow::Context) -> NativeTexture {
         unsafe {
@@ -19,6 +21,7 @@ pub trait TextureUtil {
                 glow::TEXTURE_MAG_FILTER,
                 glow::LINEAR as i32,
             );
+            gl_error(gl, String::from("[init_texture]"));
             texture
         }
     }
@@ -38,6 +41,7 @@ pub trait TextureUtil {
                 Some(&media.get_raw_image()),
             );
             gl.generate_mipmap(glow::TEXTURE_2D);
+            gl_error(gl, String::from("[generate_texture]"));
         }
     }
 }

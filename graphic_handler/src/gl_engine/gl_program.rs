@@ -93,7 +93,6 @@ impl GlProgram {
     ) {
         self.cleanup(gl);
         for s in &mut self.main_scenes {
-            s.cleanup(gl);
             s.init_gl_component(gl, config);
             s.update_projection(viewport_ratio);
         }

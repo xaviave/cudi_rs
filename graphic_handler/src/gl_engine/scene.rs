@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::time::Instant;
 
@@ -14,13 +15,16 @@ use nalgebra_glm::perspective;
 use nalgebra_glm::rotation;
 use obj::raw;
 use obj::raw::object::Polygon;
+use obj::raw::RawMtl;
+use obj::raw::RawObj;
 
 use crate::gl_engine::buffer_util::BufferUtil;
 use crate::gl_engine::light::Light;
-use crate::gl_engine::material::CMaterial;
 use crate::gl_engine::model::Model;
 use crate::graphic_config::GraphicConfig;
 use nalgebra_glm::{scale, translate, translation, vec3, TMat4, TVec3};
+
+use super::texture_util::TextureUtil;
 
 pub struct Scene {
     // metadata
@@ -44,53 +48,38 @@ pub struct Scene {
     model_loc: Option<NativeUniformLocation>,
     view_loc: Option<NativeUniformLocation>,
     projection_loc: Option<NativeUniformLocation>,
+
+    textures: HashMap<PathBuf, Option<glow::NativeTexture>>,
 }
 impl BufferUtil for Scene {}
+impl TextureUtil for Scene {}
 
 impl Scene {
-    pub fn new(
+    fn parse_model(
         gl: &glow::Context,
-        index: u8,
-        config: &GraphicConfig,
-        viewport_ratio: f32,
+        program: NativeProgram,
+        raw_obj: RawObj,
+        raw_material: &RawMtl,
+        mtl_path: &Path,
         update_media: bool,
-    ) -> Self {
-        /*
-            Create graphic program
-            Create the render scene
-        */
-
-        let raw_obj = raw::parse_obj(BufReader::new(
-            File::open(&config.scenes[index as usize]).unwrap(),
-        ))
-        .unwrap();
-
-        let mtl_path = Path::new(&config.scenes[index as usize])
-            .parent()
-            .unwrap()
-            .join(&raw_obj.material_libraries[0]);
-        let raw_materials = raw::parse_mtl(BufReader::new(File::open(mtl_path).unwrap())).unwrap();
-
-        let program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
-
-        let mut cache = HashMap::new();
-        let mut map = |pi: usize,
-                       ni: usize,
-                       ti: usize,
-                       raw_vertex: &mut Vec<f32>,
-                       raw_indices: &mut Vec<i32>| {
+    ) -> Vec<Model> {
+        let mut vertex_cache = HashMap::new();
+        let mut map_data = |pi: usize,
+                            ni: usize,
+                            ti: usize,
+                            raw_vertex: &mut Vec<f32>,
+                            raw_indices: &mut Vec<i32>| {
             // Look up cache
-            let index = match cache.entry((pi, ni, ti)) {
+            let index = match vertex_cache.entry((pi, ni, ti)) {
                 // Cache miss -> make new, store it on cache
                 Entry::Vacant(entry) => {
                     let p = raw_obj.positions[pi];
                     let n = raw_obj.normals[ni];
-                    // let t = raw_obj.tex_coords[ti];
+                    let t = raw_obj.tex_coords[ti];
                     let vertex = vec![
                         p.0, p.1, p.2, //
                         n.0, n.1, n.2, //
-                        0., 0., // 0.,
-                            // t.0, t.1, t.2
+                        t.0, t.1, // t.2
                     ];
                     let index = raw_vertex.len() / 8;
                     raw_vertex.extend(vertex);
@@ -113,7 +102,7 @@ impl Scene {
                     match p {
                         Polygon::PTN(vec) => {
                             for &(pi, ti, ni) in vec {
-                                map(pi, ni, ti, &mut raw_vertex, &mut raw_indices);
+                                map_data(pi, ni, ti, &mut raw_vertex, &mut raw_indices);
                             }
                         }
                         _ => panic!(),
@@ -121,18 +110,107 @@ impl Scene {
                 }
             }
 
-            println!("Parsing mtl: {} {:?}", n, r);
             models.push(Model::new(
                 gl,
+                program,
                 raw_vertex,
                 raw_indices,
-                CMaterial::new(gl, program, &raw_materials.materials[n]),
                 update_media,
+                mtl_path,
+                &raw_material.materials[n],
             ));
         }
+        models
+    }
+
+    fn parse_textures(
+        gl: &glow::Context,
+        raw_material: &RawMtl,
+        mtl_path: &Path,
+    ) -> HashMap<PathBuf, Option<glow::NativeTexture>> {
+        let file_to_tex = |tex_file: PathBuf| -> Option<glow::NativeTexture> {
+            let texture = Self::init_texture(gl);
+            let media = Frame::new(tex_file);
+            Self::generate_texture(gl, texture, &media);
+            Some(texture)
+        };
+
+        let textures_paths: Vec<_> = raw_material
+            .materials
+            .values()
+            .flat_map(|r| {
+                [
+                    r.diffuse_map.as_ref(),
+                    r.specular_map.as_ref(),
+                    r.bump_map.as_ref(),
+                ]
+            })
+            .filter_map(|f| f.map(|map| mtl_path.join(&map.file)))
+            .fold(Vec::new(), |mut acc, f_map| {
+                if !acc.contains(&f_map) {
+                    acc.push(f_map);
+                }
+                acc
+            });
+
+        let mut textures_cache = HashMap::new();
+        let mut map_data = |texture_name: PathBuf| {
+            match textures_cache.entry(texture_name.clone()) {
+                Entry::Vacant(entry) => {
+                    let x = file_to_tex(texture_name);
+                    entry.insert(x);
+                    x
+                }
+                Entry::Occupied(entry) => *entry.get(),
+            };
+        };
+
+        for p in textures_paths {
+            map_data(p);
+        }
+        textures_cache
+    }
+
+    pub fn new(
+        gl: &glow::Context,
+        index: u8,
+        config: &GraphicConfig,
+        viewport_ratio: f32,
+        update_media: bool,
+    ) -> Self {
+        /*
+            Create graphic program
+            Create the render scene
+        */
+
+        let raw_obj = raw::parse_obj(BufReader::new(
+            File::open(&config.scenes[index as usize]).unwrap(),
+        ))
+        .unwrap();
+
+        let mtl_path = Path::new(&config.scenes[index as usize]).parent().unwrap();
+        let raw_material = raw::parse_mtl(BufReader::new(
+            File::open(mtl_path.join(&raw_obj.material_libraries[0])).unwrap(),
+        ))
+        .unwrap();
+
+        let program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
+
+        let models = Self::parse_model(gl, program, raw_obj, &raw_material, mtl_path, update_media);
+        let textures = Self::parse_textures(gl, &raw_material, mtl_path);
 
         unsafe {
             gl.use_program(Some(program));
+
+            let ambient_location = gl.get_uniform_location(program, "ambientMap");
+            let diffuse_location = gl.get_uniform_location(program, "diffuseMap");
+            let specular_location = gl.get_uniform_location(program, "specularMap");
+            let normal_location = gl.get_uniform_location(program, "normalMap");
+
+            gl.uniform_1_i32(ambient_location.as_ref(), 0);
+            gl.uniform_1_i32(diffuse_location.as_ref(), 1);
+            gl.uniform_1_i32(specular_location.as_ref(), 2);
+            gl.uniform_1_i32(normal_location.as_ref(), 3);
 
             Self {
                 time: Instant::now(),
@@ -154,6 +232,7 @@ impl Scene {
                 model_loc: gl.get_uniform_location(program, "model"),
                 view_loc: gl.get_uniform_location(program, "view"),
                 projection_loc: gl.get_uniform_location(program, "projection"),
+                textures,
             }
         }
     }
@@ -217,12 +296,14 @@ impl Scene {
         self.update_scene_data(gl);
         self.update_matrix(gl, ux_value);
         for m in &mut self.models {
-            m.draw(gl, self.program, rx);
+            m.draw(gl, self.program, rx, &self.textures);
         }
     }
 
     pub fn init_gl_component(&mut self, gl: &glow::Context, config: &GraphicConfig) {
         self.program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
+
+        // panic!("need to rebind textures");
         unsafe {
             gl.use_program(Some(self.program));
             for m in &mut self.models {
