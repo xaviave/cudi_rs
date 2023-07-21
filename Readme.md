@@ -82,7 +82,7 @@ This app is a display of the world, it will show you images with a particular ae
 #### Image selector
 
 - create a database to stock the link of the image
-- create an ImageLink class that get the link from Archillect or Google Photos (check the max requests)
+- create an ImageLink class that get the link from Archillect or Google Photos or instagram feed (check the max requests)
 - create an ML tag creator class using tensorflow to make a classification from all images
 - found different sources to get the image's links
 
@@ -119,5 +119,12 @@ Animation could be add to the screen:
 
 - TV screen (high speed video\* accelerated with b/w filter and speed cut)
 - Images in line on the top of the screen, a slow dark wallscreen animation will be always display. Those images will describe a type of sound (frequencies). When this type will appear in a music the corresponding image will grow then retake is place. All the sounds will create a nearly chaotic and unique animation for each music.
+- Color palette with gradient from left to right in high speed
+- Fill the screen with the same image in high speed and in a geometric way
+- Themes displayed with associative color palette (death -> dark)
+- [pixel sorting](<http://satyarth.me/articles/pixel-sorting/#:~:text=Pixel%20sorting%20is%20an%20interesting,(processing%20source%20code%20here).>)
+- video in background and cudi on the top on certains part of the screen (anonymisation instead of blurring)
+- check [compression artifact](https://en.wikipedia.org/wiki/Compression_artifact)
+  [here also](https://github.com/scriptkittie/GlitchKernel)
 
 ##### \*car chase, illegal japanese drift, race (boat, bike, car, plane, spaceship)
