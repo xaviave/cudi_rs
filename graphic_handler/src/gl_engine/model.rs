@@ -79,24 +79,33 @@ impl Model {
     fn bind_textures(
         &mut self,
         gl: &glow::Context,
+        program: glow::NativeProgram,
         textures: &HashMap<PathBuf, Option<glow::NativeTexture>>,
     ) {
-        let activate_texture = |map_path: &Option<PathBuf>, i: u32| match map_path {
-            Some(t) => match textures.get(t) {
-                Some(review) => unsafe {
-                    gl.active_texture(i);
-                    gl.bind_texture(glow::TEXTURE_2D, review.clone());
-                    gl_error(gl, String::from("Aie"));
+        let activate_texture =
+            |map_path: &Option<PathBuf>, i: u32, texture_name: &str| match map_path {
+                Some(t) => match textures.get(t) {
+                    Some(&review) => unsafe {
+                        gl.active_texture(glow::TEXTURE0 + i);
+                        gl.bind_texture(glow::TEXTURE_2D, review);
+                        gl.uniform_1_i32(
+                            gl.get_uniform_location(program, texture_name).as_ref(),
+                            i as i32,
+                        );
+                        gl_error(gl, String::from(format!("Aie {}", i)));
+                    },
+                    None => (),
                 },
-                None => (),
-            },
-            _ => (),
-        };
+                _ => (),
+            };
 
-        activate_texture(&self.ambient_map_path, 0);
-        activate_texture(&self.diffuse_map_path, 1);
-        // activate_texture(&self.specular_map_path, 2);
-        // activate_texture(&self.bump_map_path, 3);
+        activate_texture(&self.ambient_map_path, 0, "ambientMap");
+        activate_texture(&self.diffuse_map_path, 1, "diffuseMap");
+        activate_texture(&self.specular_map_path, 2, "specularMap");
+        activate_texture(&self.bump_map_path, 3, "normalMap");
+        unsafe {
+            gl.active_texture(glow::TEXTURE0);
+        }
     }
 
     pub fn draw(
@@ -112,7 +121,8 @@ impl Model {
         unsafe {
             // gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
             gl.bind_vertex_array(Some(self.gl_buffer.vao));
-            self.bind_textures(gl, textures);
+            self.bind_textures(gl, program, textures);
+
             gl.draw_elements(
                 glow::TRIANGLES,
                 self.raw_indices_buffer.len() as i32,

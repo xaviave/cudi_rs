@@ -3,7 +3,7 @@ pub mod buffer_util;
 pub mod framebuffer_renderer;
 pub mod gl_error;
 pub mod gl_program;
-pub mod light;
+pub mod lights;
 pub mod material;
 pub mod model;
 pub mod scene;

@@ -19,11 +19,13 @@ use obj::raw::RawMtl;
 use obj::raw::RawObj;
 
 use crate::gl_engine::buffer_util::BufferUtil;
-use crate::gl_engine::light::Light;
+use crate::gl_engine::lights::directional_light::DirectionalLight;
 use crate::gl_engine::model::Model;
 use crate::graphic_config::GraphicConfig;
 use nalgebra_glm::{scale, translate, translation, vec3, TMat4, TVec3};
 
+use super::lights::point_light::PointLight;
+use super::lights::spot_light::SpotLight;
 use super::texture_util::TextureUtil;
 
 pub struct Scene {
@@ -34,7 +36,9 @@ pub struct Scene {
 
     // fragment shader
     bg_color: Color,
-    light_data: Light,
+    directional_light_data: DirectionalLight,
+    spot_light_data: Vec<SpotLight>,
+    point_light_data: Vec<PointLight>,
 
     // vertex shader
     pub models: Vec<Model>,
@@ -45,9 +49,13 @@ pub struct Scene {
 
     // opengl
     program: glow::Program,
+    time_loc: Option<NativeUniformLocation>,
+    debug_loc: Option<NativeUniformLocation>,
     model_loc: Option<NativeUniformLocation>,
     view_loc: Option<NativeUniformLocation>,
     projection_loc: Option<NativeUniformLocation>,
+    spot_light_number_loc: Option<NativeUniformLocation>,
+    point_light_number_loc: Option<NativeUniformLocation>,
 
     textures: HashMap<PathBuf, Option<glow::NativeTexture>>,
 }
@@ -140,6 +148,7 @@ impl Scene {
             .values()
             .flat_map(|r| {
                 [
+                    r.ambient_map.as_ref(),
                     r.diffuse_map.as_ref(),
                     r.specular_map.as_ref(),
                     r.bump_map.as_ref(),
@@ -201,24 +210,38 @@ impl Scene {
 
         unsafe {
             gl.use_program(Some(program));
-
-            let ambient_location = gl.get_uniform_location(program, "ambientMap");
-            let diffuse_location = gl.get_uniform_location(program, "diffuseMap");
-            let specular_location = gl.get_uniform_location(program, "specularMap");
-            let normal_location = gl.get_uniform_location(program, "normalMap");
-
-            gl.uniform_1_i32(ambient_location.as_ref(), 0);
-            gl.uniform_1_i32(diffuse_location.as_ref(), 1);
-            gl.uniform_1_i32(specular_location.as_ref(), 2);
-            gl.uniform_1_i32(normal_location.as_ref(), 3);
-
             Self {
                 time: Instant::now(),
                 viewport_ratio,
                 update_media,
 
                 bg_color: Color::new(0., 0., 0., 1.),
-                light_data: Light::new(gl, &program),
+                directional_light_data: DirectionalLight::new(
+                    gl,
+                    &program,
+                    String::from("directional_light"),
+                    0.2,
+                ),
+                spot_light_data: (0..3)
+                    .map(|i| {
+                        SpotLight::new(
+                            gl,
+                            &program,
+                            format!("spot_lights[{}]", i),
+                            vec3(0., 2., 2. * i as f32),
+                        )
+                    })
+                    .collect(),
+                point_light_data: (0..1)
+                    .map(|i| {
+                        PointLight::new(
+                            gl,
+                            &program,
+                            format!("point_lights[{}]", i),
+                            vec3(0., 2., -2.),
+                        )
+                    })
+                    .collect(),
 
                 models,
                 // models: vec![models],
@@ -229,9 +252,13 @@ impl Scene {
                 projection_mat: perspective(viewport_ratio, (45_f32).to_radians(), 0.1, 100.0),
 
                 program,
+                time_loc: gl.get_uniform_location(program, "time"),
+                debug_loc: gl.get_uniform_location(program, "debug"),
                 model_loc: gl.get_uniform_location(program, "model"),
                 view_loc: gl.get_uniform_location(program, "view"),
                 projection_loc: gl.get_uniform_location(program, "projection"),
+                spot_light_number_loc: gl.get_uniform_location(program, "spot_light_number"),
+                point_light_number_loc: gl.get_uniform_location(program, "point_light_number"),
                 textures,
             }
         }
@@ -249,7 +276,7 @@ impl Scene {
         );
         model *= self.model_mat
             * rotation(
-                self.time.elapsed().as_millis() as f32 * 0.05_f32.to_radians(),
+                self.time.elapsed().as_millis() as f32 * 0.0_f32.to_radians(),
                 &vec3(0.0, 1.0, 0.0),
             );
         model = scale(
@@ -273,7 +300,29 @@ impl Scene {
     }
 
     fn update_scene_data(&mut self, gl: &glow::Context) {
-        self.light_data.update_light(gl, self.program);
+        self.directional_light_data.update_light(gl, self.program);
+        for l in &mut self.point_light_data {
+            l.update_light(gl, self.program);
+        }
+
+        for l in &mut self.spot_light_data {
+            l.update_light(gl, self.program);
+        }
+        unsafe {
+            gl.uniform_1_f32(
+                self.time_loc.as_ref(),
+                (self.time.elapsed().as_millis() as f32) * 0.01,
+            );
+            gl.uniform_1_i32(self.debug_loc.as_ref(), 1);
+            gl.uniform_1_i32(
+                self.spot_light_number_loc.as_ref(),
+                self.spot_light_data.len() as i32,
+            );
+            gl.uniform_1_i32(
+                self.point_light_number_loc.as_ref(),
+                self.point_light_data.len() as i32,
+            );
+        }
     }
 
     pub fn draw(
