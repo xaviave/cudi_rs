@@ -12,4 +12,4 @@ framebuffer_shader:
 renderer_size: 2
 scenes:
   - "data/objs/indoor_plant_02.obj"
-  - "data/objs/outside.obj"
+  - "data/objs/untitled.obj"

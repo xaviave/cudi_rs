@@ -72,7 +72,8 @@ vec4 calc_light(BaseLight base, vec3 direction, vec3 normal)
 	vec4 specular = vec4(0.);
 	
 	// ambient
-	vec4 ambient = vec4(base.ambient_intensity * base.color, 1.);
+	vec4 ambient = vec4(base.ambient_intensity * base.color, 1.)
+		* (texture2D(ambientMap, TexCoord) + vec4(material.ambient, 1.));
 	
 	float diffuse_factor = dot(normal, -direction);
 	if (diffuse_factor > 0.)
@@ -80,7 +81,8 @@ vec4 calc_light(BaseLight base, vec3 direction, vec3 normal)
 		// diffuse
 		diffuse = vec4(base.color, 1.)
 			* base.diffuse_intensity
-			* diffuse_factor;
+			* diffuse_factor
+			* (texture2D(diffuseMap, TexCoord) + vec4(material.diffuse, 1.));
 
 		// specular
 		vec3 vertex_to_eye = normalize(viewPos - FragPos);
@@ -89,7 +91,8 @@ vec4 calc_light(BaseLight base, vec3 direction, vec3 normal)
 		if (specular_factor > 0.)
 		{
 			specular_factor = pow(specular_factor, material.specular_power);
-			specular = vec4(base.color * material.specular_intensity * specular_factor, 1.0f);
+			specular = vec4(base.color * material.specular_intensity * specular_factor, 1.0f)
+				* (texture2D(specularMap, TexCoord) + vec4(material.specular, 1.));
 		}
 	}
 	return (ambient + diffuse + specular);
@@ -108,8 +111,8 @@ vec4 calc_point_light(PointLight l, vec3 normal)
 
 	vec4 color = calc_light(l.base.base, light_direction, normal);
 	float attenuation_factor = l.attenuation.constant +
-						 l.attenuation.linear * dist +
-						 l.attenuation.exp_ * dist * dist;
+		l.attenuation.linear * dist +
+		l.attenuation.exp_ * dist * dist;
 
 	return (color / attenuation_factor);
 }
@@ -141,7 +144,8 @@ void main()
 	}
 
 	// final color
-	vec4 result = texture2D(diffuseMap, TexCoord) * lights;
+	// vec4 result = texture2D(diffuseMap, TexCoord) * lights;
+	vec4 result = lights;
 	if (debug == 0 && FragPos.x > 0.)
 		result.xyz = lights.xyz + calc_directional_light(norm_normal).xyz;
 	Fragcolor = vec4(result.rgb, 1.);
