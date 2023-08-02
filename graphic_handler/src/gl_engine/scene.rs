@@ -18,6 +18,7 @@ use obj::raw::object::Polygon;
 use obj::raw::RawMtl;
 use obj::raw::RawObj;
 
+use crate::controls::Controls;
 use crate::gl_engine::buffer_util::BufferUtil;
 use crate::gl_engine::lights::directional_light::DirectionalLight;
 use crate::gl_engine::model::Model;
@@ -269,22 +270,20 @@ impl Scene {
         self.projection_mat = perspective(viewport_ratio, (45_f32).to_radians(), 0.1, 100.0);
     }
 
-    fn update_matrix(&mut self, gl: &glow::Context, ux_value: Color) {
-        let mut model: TMat4<f32> = translate(
-            &translation(&self.last_position),
-            &vec3(ux_value.r, ux_value.g, ux_value.b),
-        );
+    fn update_matrix(&mut self, gl: &glow::Context, ux_data: &Controls) {
+        let mut model: TMat4<f32> =
+            translate(&translation(&self.last_position), &ux_data.scene_position);
         model *= self.model_mat
             * rotation(
-                self.time.elapsed().as_millis() as f32 * 0.0_f32.to_radians(),
-                &vec3(0.0, 1.0, 0.0),
+                // self.time.elapsed().as_millis() as f32 * 0.0_f32.to_radians(),
+                2.0_f32.to_radians(),
+                &ux_data.scene_rotation,
             );
         model = scale(
             &model,
-            &vec3(0.5, 0.5, 0.5),
-            // used for rectangle that need to scale exactly like an image
-            // maybe implement an impl for image-scene
-            // &vec3(self.scene.ratio * 0.1, viewport_ratio * 0.1, 1.).normalize(),
+            &ux_data.scene_scale, // used for rectangle that need to scale exactly like an image
+                                  // maybe implement an impl for image-scene
+                                  // &vec3(self.scene.ratio * 0.1, viewport_ratio * 0.1, 1.).normalize(),
         );
 
         unsafe {
@@ -299,7 +298,7 @@ impl Scene {
         }
     }
 
-    fn update_scene_data(&mut self, gl: &glow::Context) {
+    fn update_scene_data(&mut self, gl: &glow::Context, ux_data: &Controls) {
         self.directional_light_data.update_light(gl, self.program);
         for l in &mut self.point_light_data {
             l.update_light(gl, self.program);
@@ -313,7 +312,7 @@ impl Scene {
                 self.time_loc.as_ref(),
                 (self.time.elapsed().as_millis() as f32) * 0.01,
             );
-            gl.uniform_1_i32(self.debug_loc.as_ref(), 1);
+            gl.uniform_1_i32(self.debug_loc.as_ref(), ux_data.debug);
             gl.uniform_1_i32(
                 self.spot_light_number_loc.as_ref(),
                 self.spot_light_data.len() as i32,
@@ -330,20 +329,15 @@ impl Scene {
         gl: &glow::Context,
         rx: &Receiver<Frame>,
         need_refresh: bool,
-        ux_value: Color,
+        ux_data: &Controls,
     ) {
         // should handle the media here
         if !self.update_media && !need_refresh {
             return;
         }
-        // let cubes_indices: [TVec3<f32>; 3] = [
-        //     vec3(0.0, 0.0, -5.0),
-        //     vec3(0.0, 3.0, -5.0),
-        //     vec3(0.0, -3.0, -5.0),
-        // ];
 
-        self.update_scene_data(gl);
-        self.update_matrix(gl, ux_value);
+        self.update_scene_data(gl, ux_data);
+        self.update_matrix(gl, ux_data);
         for m in &mut self.models {
             m.draw(gl, self.program, rx, &self.textures);
         }
@@ -352,7 +346,6 @@ impl Scene {
     pub fn init_gl_component(&mut self, gl: &glow::Context, config: &GraphicConfig) {
         self.program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
 
-        // panic!("need to rebind textures");
         unsafe {
             gl.use_program(Some(self.program));
             for m in &mut self.models {

@@ -144,9 +144,8 @@ void main()
 	}
 
 	// final color
-	// vec4 result = texture2D(diffuseMap, TexCoord) * lights;
 	vec4 result = lights;
-	if (debug == 0 && FragPos.x > 0.)
-		result.xyz = lights.xyz + calc_directional_light(norm_normal).xyz;
+	if (debug == 1 && FragPos.x > 0.)
+		result = vec4(1.0, 0., 0., 1.);
 	Fragcolor = vec4(result.rgb, 1.);
 }

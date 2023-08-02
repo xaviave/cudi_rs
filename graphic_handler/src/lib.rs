@@ -78,7 +78,7 @@ impl GraphicContext {
         );
 
         let mut debug = Debug::new();
-        let controls = Controls::new();
+        let controls = Controls::new(&config);
         let modifiers = glutin::event::ModifiersState::default();
         let program = GlProgram::new(&gl, &config);
         let cursor_position = glutin::dpi::PhysicalPosition::new(-1.0, -1.0);
@@ -136,7 +136,7 @@ impl GraphicContext {
                             self.program.cleanup(&self.gl);
                             *control_flow = glutin::event_loop::ControlFlow::Exit
                         }
-                        _ => (),
+                        _ => {}
                     }
 
                     // Map window event to iced event
@@ -167,8 +167,8 @@ impl GraphicContext {
                         );
                     }
 
-                    if current_time.elapsed().as_millis() > self.config.fps {
-                        // println!("fps: {}", 1000 / current_time.elapsed().as_millis());
+                    let fps = 1000 / self.state.program().fps;
+                    if current_time.elapsed().as_millis() > fps {
                         current_time = Instant::now();
                         need_refresh = true;
                         tx.send(self.config.renderer_size).unwrap();
@@ -187,6 +187,7 @@ impl GraphicContext {
                                 viewport_size.height as i32,
                             );
                         }
+
                         self.program.resize_buffer(
                             &self.gl,
                             viewport_size.into(),
@@ -198,18 +199,12 @@ impl GraphicContext {
                     }
 
                     // double buffer need 2 clear
-                    let p = self.state.program().background_color;
-                    if need_clear > 0 || p != self.program.framebuffer_renderer.bg_color {
-                        self.program.framebuffer_renderer.bg_color = p;
+                    if need_clear > 0 {
                         self.program.clear(&self.gl);
-                        if need_clear == 0 {
-                            println!("Warning, need_clear = 0");
-                            need_clear = 1;
-                        } else {
-                            need_clear -= 1;
-                        }
+                        need_clear -= 1;
                     }
-                    self.program.draw(&self.gl, &rx, need_refresh, p);
+                    self.program
+                        .draw(&self.gl, &rx, need_refresh, self.state.program());
                     need_refresh = false;
 
                     // And then iced on top

@@ -5,6 +5,7 @@ use iced_winit::Color;
 use glow::*;
 use iced_glow::glow;
 
+use crate::controls::Controls;
 use crate::gl_engine::framebuffer_renderer::FramebufferRenderer;
 use crate::gl_engine::scene::Scene;
 use crate::graphic_config::GraphicConfig;
@@ -62,7 +63,7 @@ impl GlProgram {
         gl: &glow::Context,
         rx: &Receiver<Frame>,
         need_refresh: bool,
-        ux_data: Color,
+        ux_data: &Controls,
     ) {
         unsafe {
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer_renderer.fbo));
