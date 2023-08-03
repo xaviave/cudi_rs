@@ -11,8 +11,6 @@ use glow::*;
 use iced_glow::glow;
 use iced_glow::Color;
 use media_handler::frame::Frame;
-use nalgebra_glm::perspective;
-use nalgebra_glm::rotation;
 use obj::raw;
 use obj::raw::object::Polygon;
 use obj::raw::RawMtl;
@@ -23,7 +21,10 @@ use crate::gl_engine::buffer_util::BufferUtil;
 use crate::gl_engine::lights::directional_light::DirectionalLight;
 use crate::gl_engine::model::Model;
 use crate::graphic_config::GraphicConfig;
-use nalgebra_glm::{scale, translate, translation, vec3, TMat4, TVec3};
+use nalgebra_glm::{
+    mat3, mat3_to_mat4, perspective, rotation, scale, translate, translation, vec3, TMat4, TVec3,
+    Vec3,
+};
 
 use super::lights::point_light::PointLight;
 use super::lights::spot_light::SpotLight;
@@ -270,15 +271,52 @@ impl Scene {
         self.projection_mat = perspective(viewport_ratio, (45_f32).to_radians(), 0.1, 100.0);
     }
 
+    fn rotation_matrix(theta: Vec3) -> TMat4<f32> {
+        // return a mat4 with a mat3 Eulers matrix used with theta angles
+        // theta[0]: x axis
+        // theta[1]: y axis
+        // theta[2]: z axis
+        let r_x = mat3(
+            1.,
+            0.,
+            0.,
+            0.,
+            theta[0].cos(),
+            -theta[0].sin(),
+            0.,
+            theta[0].sin(),
+            theta[0].cos(),
+        );
+        let r_y = mat3(
+            theta[1].cos(),
+            0.,
+            theta[1].sin(),
+            0.,
+            1.,
+            0.,
+            -theta[1].sin(),
+            0.,
+            theta[1].cos(),
+        );
+        let r_z = mat3(
+            theta[2].cos(),
+            -theta[2].sin(),
+            0.,
+            theta[2].sin(),
+            theta[2].cos(),
+            0.,
+            0.,
+            0.,
+            1.,
+        );
+        mat3_to_mat4(&(r_z * (r_y * r_x)))
+    }
+
     fn update_matrix(&mut self, gl: &glow::Context, ux_data: &Controls) {
         let mut model: TMat4<f32> =
             translate(&translation(&self.last_position), &ux_data.scene_position);
-        model *= self.model_mat
-            * rotation(
-                // self.time.elapsed().as_millis() as f32 * 0.0_f32.to_radians(),
-                2.0_f32.to_radians(),
-                &ux_data.scene_rotation,
-            );
+
+        model *= self.model_mat * Self::rotation_matrix(ux_data.scene_rotation);
         model = scale(
             &model,
             &ux_data.scene_scale, // used for rectangle that need to scale exactly like an image

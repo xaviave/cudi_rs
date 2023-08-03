@@ -9,8 +9,9 @@ use crate::graphic_config::GraphicConfig;
 #[derive(Debug, Clone)]
 pub struct Controls {
     pub refresh: u8,
-    pub command_panel: i32,
+    pub command_panel: bool,
     pub camera_position: Vec3,
+    pub scene_scale_lock: bool,
     pub scene_scale: Vec3,
     pub scene_position: Vec3,
     pub scene_rotation: Vec3,
@@ -33,7 +34,8 @@ pub enum Message {
     AnimationChanged(i32),
     ModeChanged(i32),
     DebugChanged(i32),
-    CommandPanelChanged(i32),
+    CommandPanelChanged(bool),
+    SceneScaleLockChanged(bool),
 }
 
 impl Controls {
@@ -49,7 +51,8 @@ impl Controls {
             animation_id: 0,
             mode_id: 0,
             debug: 1,
-            command_panel: 0,
+            command_panel: false,
+            scene_scale_lock: false,
         }
     }
 }
@@ -90,31 +93,55 @@ impl Program for Controls {
             Message::CommandPanelChanged(command_panel) => {
                 self.command_panel = command_panel;
             }
+            Message::SceneScaleLockChanged(scene_scale_lock) => {
+                self.scene_scale_lock = scene_scale_lock;
+            }
         }
 
         Command::none()
     }
 
     fn view(&self) -> Element<Message, Renderer> {
+        let scene_scale_lock = self.scene_scale_lock;
         let scene_scale = self.scene_scale;
         let scene_scale_sliders = Row::<Message, Renderer>::new()
             .width(500)
             .spacing(20)
             .push(
+                Button::new(if scene_scale_lock {
+                    "Lock scale"
+                } else {
+                    "Unlock scale"
+                })
+                .on_press(Message::SceneScaleLockChanged(!scene_scale_lock)),
+            )
+            .push(
                 Slider::new(0.01..=2.0, scene_scale.x, move |x| {
-                    Message::SceneScaleChanged(vec3(x, scene_scale.y, scene_scale.z))
+                    if !scene_scale_lock {
+                        Message::SceneScaleChanged(vec3(x, scene_scale.y, scene_scale.z))
+                    } else {
+                        Message::SceneScaleChanged(vec3(x, x, x))
+                    }
                 })
                 .step(0.01),
             )
             .push(
                 Slider::new(0.01..=2.0, scene_scale.y, move |y| {
-                    Message::SceneScaleChanged(vec3(scene_scale.x, y, scene_scale.z))
+                    if !scene_scale_lock {
+                        Message::SceneScaleChanged(vec3(y, scene_scale.y, scene_scale.z))
+                    } else {
+                        Message::SceneScaleChanged(vec3(y, y, y))
+                    }
                 })
                 .step(0.01),
             )
             .push(
                 Slider::new(0.01..=2.0, scene_scale.z, move |z| {
-                    Message::SceneScaleChanged(vec3(scene_scale.x, scene_scale.y, z))
+                    if !scene_scale_lock {
+                        Message::SceneScaleChanged(vec3(z, scene_scale.y, scene_scale.z))
+                    } else {
+                        Message::SceneScaleChanged(vec3(z, z, z))
+                    }
                 })
                 .step(0.01),
             );
@@ -124,19 +151,19 @@ impl Program for Controls {
             .width(500)
             .spacing(20)
             .push(
-                Slider::new(-100.0..=100.0, scene_position.x, move |x| {
+                Slider::new(-50.0..=50.0, scene_position.x, move |x| {
                     Message::ScenePositionChanged(vec3(x, scene_position.y, scene_position.z))
                 })
                 .step(0.01),
             )
             .push(
-                Slider::new(-100.0..=100.0, scene_position.y, move |y| {
+                Slider::new(-50.0..=50.0, scene_position.y, move |y| {
                     Message::ScenePositionChanged(vec3(scene_position.x, y, scene_position.z))
                 })
                 .step(0.01),
             )
             .push(
-                Slider::new(-100.0..=100.0, scene_position.z, move |z| {
+                Slider::new(-50.0..=50.0, scene_position.z, move |z| {
                     Message::ScenePositionChanged(vec3(scene_position.x, scene_position.y, z))
                 })
                 .step(0.01),
@@ -168,36 +195,31 @@ impl Program for Controls {
         let debug = self.debug;
         let debug_checkbox =
             Row::<Message, Renderer>::new()
-                .width(500)
+                .width(50)
                 .spacing(20)
                 .push(Checkbox::new(
-                    "Debug",
+                    "",
                     if debug == 1 { true } else { false },
                     move |_| Message::DebugChanged(if debug == 1 { 0 } else { 1 }),
                 ));
 
         let fps = self.fps as i32;
         let fps_slider = Row::<Message, Renderer>::new()
-            .width(500)
+            .width(350)
             .spacing(20)
             .push(Slider::new(1..=120, fps, move |x| Message::FpsChanged(x as u128)).step(1));
 
         let command_panel = self.command_panel;
         let command_panel_button = Row::<Message, Renderer>::new().width(500).spacing(20).push(
-            Button::new(if command_panel == 0 {
+            Button::new(if command_panel {
                 "Show command panel"
             } else {
                 "Hide command panel"
             })
-            .on_press(Message::CommandPanelChanged(if command_panel == 1 {
-                0
-            } else {
-                1
-            })),
+            .on_press(Message::CommandPanelChanged(!command_panel)),
         );
-
         let mut c = Column::new().push(command_panel_button);
-        if command_panel == 1 {
+        if command_panel {
             c = c
                 .padding(10)
                 .spacing(10)
@@ -222,13 +244,20 @@ impl Program for Controls {
                         .size(14)
                         .style(Color::WHITE),
                 )
-                .push(Text::new("Debug").style(Color::WHITE))
-                .push(debug_checkbox)
-                .push(Text::new("FPS").style(Color::WHITE))
-                .push(fps_slider)
-                .push(Text::new(format!("{fps:?}")).size(14).style(Color::WHITE));
+                .push(
+                    Row::new()
+                        .push(Text::new("Debug").style(Color::WHITE))
+                        .spacing(10)
+                        .push(debug_checkbox)
+                        .push(
+                            Text::new(format!("FPS: {fps:?}"))
+                                .size(14)
+                                .style(Color::WHITE),
+                        )
+                        .spacing(10)
+                        .push(fps_slider),
+                );
         }
-
         Row::new()
             .width(Length::Fill)
             .height(Length::Fill)
@@ -236,7 +265,7 @@ impl Program for Controls {
             .push(
                 Column::new()
                     .width(Length::Fill)
-                    .align_items(Alignment::End)
+                    .align_items(Alignment::Start)
                     .push(c),
             )
             .into()
