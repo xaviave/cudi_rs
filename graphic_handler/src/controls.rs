@@ -128,7 +128,7 @@ impl Program for Controls {
             .push(
                 Slider::new(0.01..=2.0, scene_scale.y, move |y| {
                     if !scene_scale_lock {
-                        Message::SceneScaleChanged(vec3(y, scene_scale.y, scene_scale.z))
+                        Message::SceneScaleChanged(vec3(scene_scale.x, y, scene_scale.z))
                     } else {
                         Message::SceneScaleChanged(vec3(y, y, y))
                     }
@@ -138,7 +138,7 @@ impl Program for Controls {
             .push(
                 Slider::new(0.01..=2.0, scene_scale.z, move |z| {
                     if !scene_scale_lock {
-                        Message::SceneScaleChanged(vec3(z, scene_scale.y, scene_scale.z))
+                        Message::SceneScaleChanged(vec3(scene_scale.x, scene_scale.y, z))
                     } else {
                         Message::SceneScaleChanged(vec3(z, z, z))
                     }
