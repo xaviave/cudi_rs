@@ -8,24 +8,23 @@ use crate::graphic_config::GraphicConfig;
 
 #[derive(Debug, Clone)]
 pub struct Controls {
-    pub refresh: u8,
     pub command_panel: bool,
-    pub camera_position: Vec3,
-    pub scene_scale_lock: bool,
+
     pub scene_scale: Vec3,
+    pub scene_scale_lock: bool,
     pub scene_position: Vec3,
     pub scene_rotation: Vec3,
+
     pub fps: u128,
+    pub debug: i32,
     pub filter_id: i32,
     pub animation_id: i32,
     pub mode_id: i32,
-    pub debug: i32,
     // pub music_player
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    CameraPositionChanged(Vec3),
     SceneScaleChanged(Vec3),
     ScenePositionChanged(Vec3),
     SceneRotationChanged(Vec3),
@@ -41,18 +40,16 @@ pub enum Message {
 impl Controls {
     pub fn new(config: &GraphicConfig) -> Controls {
         Controls {
-            refresh: 0,
-            camera_position: vec3(0.0, 0.0, 0.0),
+            command_panel: false,
+            scene_scale_lock: false,
             scene_scale: vec3(0.5, 0.5, 0.5),
             scene_position: vec3(0.0, 0.0, 0.0),
             scene_rotation: vec3(0.0, 1.0, 0.0),
             fps: config.fps,
+            debug: 0,
             filter_id: 0,
             animation_id: 0,
             mode_id: 0,
-            debug: 1,
-            command_panel: false,
-            scene_scale_lock: false,
         }
     }
 }
@@ -63,9 +60,6 @@ impl Program for Controls {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::CameraPositionChanged(position) => {
-                self.camera_position = position;
-            }
             Message::SceneScaleChanged(scale) => {
                 self.scene_scale = scale;
             }

@@ -1,6 +1,6 @@
 fps: 60
-width: 250
-height: 250
+width: 500
+height: 500
 window_name: "CUDI"
 loading_media: "data/init/loading.jpeg"
 engine_shader:

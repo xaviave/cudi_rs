@@ -47,6 +47,8 @@ impl Model {
             }
         };
 
+        println!("[CUDI SPECIFIC] check the update media value after first render");
+
         Self {
             raw_vertex_buffer: raw_vertex_buffer.clone(),
             raw_indices_buffer: raw_indices_buffer.clone(),
@@ -92,7 +94,7 @@ impl Model {
                             gl.get_uniform_location(program, texture_name).as_ref(),
                             i as i32,
                         );
-                        gl_error(gl, String::from(format!("Aie {}", i)));
+                        gl_error(gl, String::from(format!("Error in texture {}", i)));
                     },
                     None => (),
                 },

@@ -39,7 +39,7 @@ impl GraphicConfig {
         .unwrap()[0];
 
         Self {
-            fps: (1000 / cfg["fps"].as_i64().unwrap()) as u128,
+            fps: cfg["fps"].as_i64().unwrap() as u128,
             width: cfg["width"].as_i64().unwrap() as u32,
             height: cfg["height"].as_i64().unwrap() as u32,
             app_name: String::from(cfg["window_name"].as_str().unwrap()),

@@ -1,18 +1,16 @@
+use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
-
-use iced_winit::Color;
 
 use glow::*;
 use iced_glow::glow;
+use iced_winit::winit::event::VirtualKeyCode;
+use nalgebra_glm::Vec3;
 
 use crate::controls::Controls;
 use crate::gl_engine::framebuffer_renderer::FramebufferRenderer;
 use crate::gl_engine::scene::Scene;
 use crate::graphic_config::GraphicConfig;
 use media_handler::frame::Frame;
-
-use nalgebra_glm::vec3;
-use rand::Rng;
 
 pub struct GlProgram {
     first_render: bool,
@@ -36,9 +34,13 @@ impl GlProgram {
             let main_scenes = (0..config.renderer_size)
                 .map(|i| {
                     Scene::new(
-                        gl, i, &config, 1.,
+                        gl,
+                        i,
+                        &config,
+                        1.,
                         // allow the first render and lock it || find a way to change it for cudi renderer
                         false,
+                        ((config.height / 2) as f64, (config.width / 2) as f64),
                     )
                 })
                 .collect();
@@ -64,6 +66,8 @@ impl GlProgram {
         rx: &Receiver<Frame>,
         need_refresh: bool,
         ux_data: &Controls,
+        keyboard_data: &Vec<VirtualKeyCode>,
+        mouse_position: (f64, f64),
     ) {
         unsafe {
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer_renderer.fbo));
@@ -80,9 +84,22 @@ impl GlProgram {
         for s in &mut self.main_scenes {
             // r.update_scene_data(vec3(rng.gen_range(-1.2..1.2), rng.gen_range(-1.2..1.2), 1.));
             /* optionnal | need to move */
-            s.draw(gl, rx, need_refresh, ux_data);
+            s.draw(gl, rx, need_refresh, ux_data, keyboard_data, mouse_position);
         }
         self.framebuffer_renderer.draw(gl);
+    }
+
+    pub fn update_scenes_projection(&mut self, viewport_ratio: f32, direction: f32) {
+        for s in &mut self.main_scenes {
+            let mut fov = s.fov + direction;
+
+            if fov < 1.0 {
+                fov = 1.0;
+            } else if fov > 90.0 {
+                fov = 90.0;
+            }
+            s.update_projection(viewport_ratio, fov);
+        }
     }
 
     pub fn resize_buffer(
@@ -95,7 +112,7 @@ impl GlProgram {
         self.cleanup(gl);
         for s in &mut self.main_scenes {
             s.init_gl_component(gl, config);
-            s.update_projection(viewport_ratio);
+            s.update_projection(viewport_ratio, s.fov);
         }
 
         self.framebuffer_renderer = FramebufferRenderer::new(

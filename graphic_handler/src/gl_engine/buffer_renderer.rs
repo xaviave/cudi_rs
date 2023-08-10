@@ -32,7 +32,6 @@ impl BufferRenderer {
             gl.bind_vertex_array(None);
             ebo
         };
-        println!("check the update media value after first render");
         Self { vao, ebo, vbo }
     }
 

@@ -17,10 +17,17 @@ This app is a display of the world, it will show you images with a particular ae
 
 - Install PostgreSQL:
 
-      sudo apt install postgresql postgresql-client
+   - Linux:
 
+         sudo apt install postgresql postgresql-client
 
-      echo DATABASE_URL=postgres://username:password@localhost/diesel_demo > .env
+         echo DATABASE_URL=postgres://username:password@localhost/diesel_demo > .env
+
+   - Windows:
+
+      Download PostgreSQL from the website and add the `lib` and `bin` path to your env path
+
+            $Env:Path += ';C:\Program Files\PostgreSQL\[version]\bin;C:\Program Files\PostgreSQL\[version]\lib;
 
   Create the database:
 
@@ -47,17 +54,19 @@ This app is a display of the world, it will show you images with a particular ae
 1. Simple OpenGL engine in Rust:
    - ~~Open a window with some images shown~~
    - ~~Handle the high volume of local image to download per-second~~
+   - 3D engine + CUDI as texture (WIP)
    - Handle the sound
    - Handle video on screen
 2. Options and customizations of the engine:
    - Custom parameter to control the engine
      - ~~FPS~~
+     - Control with mouse and Keyboard (WIP)
      - Filter
      - Mode (Cinema/Background/image with cudi in a plain rect see data/readme)
      - ~~Media path selector~~
      - Tags (WIP)
      - Animations
-   - Custom parameter in UX
+   - ~~Custom parameter in UX~~
    - Show Music player
    - Show Music analysis window
    - Media history (like/dislike) -> search engine w/ postgresql (WIP)
@@ -75,7 +84,7 @@ This app is a display of the world, it will show you images with a particular ae
 
 #### Image selector
 
-- create a database to stock the link of the image
+- `DONE`: create a database to stock the link of the image.
 - create an ImageLink class that get the link from Archillect or Google Photos or instagram feed (check the max requests)
 - create an ML tag creator class using tensorflow to make a classification from all images
 - found different sources to get the image's links
@@ -97,7 +106,7 @@ Find tag that referenced this themes:
 
 #### Screen handler
 
-- create a Menu class that override the screen and manage all the options (image_speed - tags - mode - filter - media_root)
+- `DONE`: create a Menu class that override the screen and manage all the options (image_speed - tags - mode - filter - media_root).
 - create different mode (normal - gif surrounding the screen - animation (image or video where a part of the screen will aff cudi, the reste will be the template))
 - add an history of every file with a tag search or color search
 

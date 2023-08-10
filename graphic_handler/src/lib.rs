@@ -5,6 +5,8 @@ pub mod graphic_config;
 use crate::gl_engine::gl_program::GlProgram;
 use controls::Controls;
 use graphic_config::GraphicConfig;
+use iced_winit::winit::dpi::PhysicalPosition;
+use iced_winit::winit::event::VirtualKeyCode;
 use media_handler::frame::Frame;
 
 use std::sync::mpsc::{Receiver, Sender};
@@ -12,8 +14,6 @@ use std::time::Instant;
 
 use glow::*;
 use iced_glow::*;
-
-use iced_glutin::glutin;
 use iced_glutin::*;
 
 pub struct GraphicContext {
@@ -31,6 +31,8 @@ pub struct GraphicContext {
     cursor_position: glutin::dpi::PhysicalPosition<f64>,
     modifiers: glutin::event::ModifiersState,
     clipboard: Clipboard,
+    keyboard_data: Vec<VirtualKeyCode>,
+
     resized: bool,
     debug: Debug,
 }
@@ -100,6 +102,7 @@ impl GraphicContext {
             cursor_position,
             modifiers,
             clipboard,
+            keyboard_data: vec![],
             resized: false,
             debug,
         }
@@ -121,6 +124,20 @@ impl GraphicContext {
                         glutin::event::WindowEvent::CursorMoved { position, .. } => {
                             self.cursor_position = position;
                         }
+                        glutin::event::WindowEvent::MouseWheel { delta, .. } => {
+                            let direction = match delta {
+                                winit::event::MouseScrollDelta::LineDelta(_, p) => p,
+                                _ => 0.,
+                            };
+                            self.program
+                                .update_scenes_projection(viewport_ratio, direction);
+                        }
+                        glutin::event::WindowEvent::KeyboardInput { input, .. } => {
+                            match input.virtual_keycode {
+                                Some(key) => self.keyboard_data.push(key),
+                                _ => (),
+                            }
+                        }
                         glutin::event::WindowEvent::ModifiersChanged(new_modifiers) => {
                             self.modifiers = new_modifiers;
                         }
@@ -134,7 +151,6 @@ impl GraphicContext {
                         }
                         glutin::event::WindowEvent::CloseRequested => {
                             self.program.cleanup(&self.gl);
-                            *control_flow = glutin::event_loop::ControlFlow::Exit
                         }
                         _ => {}
                     }
@@ -172,8 +188,8 @@ impl GraphicContext {
                         current_time = Instant::now();
                         need_refresh = true;
                         tx.send(self.config.renderer_size).unwrap();
+                        self.windowed_context.window().request_redraw();
                     }
-                    self.windowed_context.window().request_redraw();
                 }
                 glutin::event::Event::RedrawRequested(_) => {
                     if self.resized {
@@ -203,9 +219,17 @@ impl GraphicContext {
                         self.program.clear(&self.gl);
                         need_clear -= 1;
                     }
-                    self.program
-                        .draw(&self.gl, &rx, need_refresh, self.state.program());
+
+                    self.program.draw(
+                        &self.gl,
+                        &rx,
+                        need_refresh,
+                        self.state.program(),
+                        &self.keyboard_data,
+                        self.cursor_position.into(),
+                    );
                     need_refresh = false;
+                    self.keyboard_data = vec![];
 
                     // And then iced on top
                     self.renderer.with_primitives(|backend, primitive| {

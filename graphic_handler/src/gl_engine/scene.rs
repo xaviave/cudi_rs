@@ -9,7 +9,7 @@ use std::time::Instant;
 
 use glow::*;
 use iced_glow::glow;
-use iced_glow::Color;
+use iced_winit::winit::event::VirtualKeyCode;
 use media_handler::frame::Frame;
 use obj::raw;
 use obj::raw::object::Polygon;
@@ -22,10 +22,10 @@ use crate::gl_engine::lights::directional_light::DirectionalLight;
 use crate::gl_engine::model::Model;
 use crate::graphic_config::GraphicConfig;
 use nalgebra_glm::{
-    mat3, mat3_to_mat4, perspective, rotation, scale, translate, translation, vec3, TMat4, TVec3,
-    Vec3,
+    mat3, mat3_to_mat4, perspective, scale, translate, translation, vec3, TMat4, TVec3, Vec3,
 };
 
+use super::camera::Camera;
 use super::lights::point_light::PointLight;
 use super::lights::spot_light::SpotLight;
 use super::texture_util::TextureUtil;
@@ -33,20 +33,20 @@ use super::texture_util::TextureUtil;
 pub struct Scene {
     // metadata
     time: Instant,
+    pub fov: f32,
     viewport_ratio: f32,
     update_media: bool,
 
     // fragment shader
-    bg_color: Color,
     directional_light_data: DirectionalLight,
     spot_light_data: Vec<SpotLight>,
     point_light_data: Vec<PointLight>,
 
     // vertex shader
     pub models: Vec<Model>,
-    last_position: TVec3<f32>,
-    view_mat: TMat4<f32>,
+    last_position_model: TVec3<f32>,
     model_mat: TMat4<f32>,
+    camera: Camera,
     projection_mat: TMat4<f32>,
 
     // opengl
@@ -188,12 +188,14 @@ impl Scene {
         config: &GraphicConfig,
         viewport_ratio: f32,
         update_media: bool,
+        mouse_position: (f64, f64),
     ) -> Self {
         /*
             Create graphic program
             Create the render scene
         */
 
+        let fov = 45.0;
         let raw_obj = raw::parse_obj(BufReader::new(
             File::open(&config.scenes[index as usize]).unwrap(),
         ))
@@ -214,10 +216,10 @@ impl Scene {
             gl.use_program(Some(program));
             Self {
                 time: Instant::now(),
+                fov,
                 viewport_ratio,
                 update_media,
 
-                bg_color: Color::new(0., 0., 0., 1.),
                 directional_light_data: DirectionalLight::new(
                     gl,
                     &program,
@@ -246,12 +248,10 @@ impl Scene {
                     .collect(),
 
                 models,
-                // models: vec![models],
-                last_position: vec3(0., 0., 0.),
-                model_mat: translation(&(vec3(0., -1., -5.)))
-                    * rotation(90.0_f32.to_radians(), &(vec3(0., 1.0, 0.0).normalize())),
-                view_mat: translation(&(vec3(0., 0., -3.).normalize())),
-                projection_mat: perspective(viewport_ratio, (45_f32).to_radians(), 0.1, 100.0),
+                last_position_model: vec3(0., 0., 0.),
+                model_mat: translation(&(vec3(0., -1., -5.))),
+                camera: Camera::new(vec3(1.0, 1.0, -3.0), vec3(0.0, 0.0, -1.0), mouse_position),
+                projection_mat: perspective(viewport_ratio, (fov).to_radians(), 0.1, 100.0),
 
                 program,
                 time_loc: gl.get_uniform_location(program, "time"),
@@ -266,9 +266,10 @@ impl Scene {
         }
     }
 
-    pub fn update_projection(&mut self, viewport_ratio: f32) {
+    pub fn update_projection(&mut self, viewport_ratio: f32, fov: f32) {
+        self.fov = fov;
         self.viewport_ratio = viewport_ratio;
-        self.projection_mat = perspective(viewport_ratio, (45_f32).to_radians(), 0.1, 100.0);
+        self.projection_mat = perspective(viewport_ratio, (fov).to_radians(), 0.1, 100.0);
     }
 
     fn rotation_matrix(theta: Vec3) -> TMat4<f32> {
@@ -312,22 +313,36 @@ impl Scene {
         mat3_to_mat4(&(r_z * (r_y * r_x)))
     }
 
-    fn update_matrix(&mut self, gl: &glow::Context, ux_data: &Controls) {
-        let mut model: TMat4<f32> =
-            translate(&translation(&self.last_position), &ux_data.scene_position);
+    fn update_matrix(
+        &mut self,
+        gl: &glow::Context,
+        ux_data: &Controls,
+        keyboard_data: &Vec<VirtualKeyCode>,
+        mouse_position: (f64, f64),
+    ) {
+        let mut model: TMat4<f32> = translate(
+            &translation(&self.last_position_model),
+            &ux_data.scene_position,
+        );
 
         model *= self.model_mat * Self::rotation_matrix(ux_data.scene_rotation);
         model = scale(
             &model,
-            &ux_data.scene_scale, // used for rectangle that need to scale exactly like an image
-                                  // maybe implement an impl for image-scene
-                                  // &vec3(self.scene.ratio * 0.1, viewport_ratio * 0.1, 1.).normalize(),
+            &ux_data.scene_scale,
+            // used for rectangle that need to scale exactly like an image
+            // maybe implement an impl for image-scene
+            // &vec3(self.scene.ratio * 0.1, viewport_ratio * 0.1, 1.).normalize(),
         );
 
+        self.camera.update_camera(keyboard_data, mouse_position);
         unsafe {
             gl.use_program(Some(self.program));
             gl.uniform_matrix_4_f32_slice(self.model_loc.as_ref(), false, model.as_slice());
-            gl.uniform_matrix_4_f32_slice(self.view_loc.as_ref(), false, self.view_mat.as_slice());
+            gl.uniform_matrix_4_f32_slice(
+                self.view_loc.as_ref(),
+                false,
+                self.camera.view.as_slice(),
+            );
             gl.uniform_matrix_4_f32_slice(
                 self.projection_loc.as_ref(),
                 false,
@@ -368,6 +383,8 @@ impl Scene {
         rx: &Receiver<Frame>,
         need_refresh: bool,
         ux_data: &Controls,
+        keyboard_data: &Vec<VirtualKeyCode>,
+        mouse_position: (f64, f64),
     ) {
         // should handle the media here
         if !self.update_media && !need_refresh {
@@ -375,7 +392,7 @@ impl Scene {
         }
 
         self.update_scene_data(gl, ux_data);
-        self.update_matrix(gl, ux_data);
+        self.update_matrix(gl, ux_data, keyboard_data, mouse_position);
         for m in &mut self.models {
             m.draw(gl, self.program, rx, &self.textures);
         }
@@ -390,6 +407,11 @@ impl Scene {
                 m.init_gl_component(gl);
             }
         }
+        self.camera = Camera::new(
+            self.camera.position,
+            self.camera.target,
+            self.camera.last_mouse_position,
+        );
     }
 
     pub fn cleanup(&mut self, gl: &glow::Context) {
