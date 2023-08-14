@@ -37,7 +37,7 @@ impl GlProgram {
                         gl,
                         i,
                         &config,
-                        1.,
+                        (config.width as f64, config.height as f64),
                         // allow the first render and lock it || find a way to change it for cudi renderer
                         false,
                         ((config.height / 2) as f64, (config.width / 2) as f64),
@@ -89,7 +89,7 @@ impl GlProgram {
         self.framebuffer_renderer.draw(gl);
     }
 
-    pub fn update_scenes_projection(&mut self, viewport_ratio: f32, direction: f32) {
+    pub fn update_scenes_projection(&mut self, viewport_size: (f64, f64), direction: f32) {
         for s in &mut self.main_scenes {
             let mut fov = s.fov + direction;
 
@@ -98,7 +98,7 @@ impl GlProgram {
             } else if fov > 90.0 {
                 fov = 90.0;
             }
-            s.update_projection(viewport_ratio, fov);
+            s.update_projection(viewport_size, fov);
         }
     }
 
@@ -110,9 +110,9 @@ impl GlProgram {
         config: &GraphicConfig,
     ) {
         self.cleanup(gl);
+        let viewport_size = (win_size.0 as f64, win_size.1 as f64);
         for s in &mut self.main_scenes {
-            s.init_gl_component(gl, config);
-            s.update_projection(viewport_ratio, s.fov);
+            s.init_gl_component(gl, config, viewport_size);
         }
 
         self.framebuffer_renderer = FramebufferRenderer::new(

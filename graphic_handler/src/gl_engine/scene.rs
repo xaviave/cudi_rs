@@ -186,7 +186,7 @@ impl Scene {
         gl: &glow::Context,
         index: u8,
         config: &GraphicConfig,
-        viewport_ratio: f32,
+        viewport_size: (f64, f64),
         update_media: bool,
         mouse_position: (f64, f64),
     ) -> Self {
@@ -196,6 +196,7 @@ impl Scene {
         */
 
         let fov = 45.0;
+        let viewport_ratio = (viewport_size.0 / viewport_size.1) as f32;
         let raw_obj = raw::parse_obj(BufReader::new(
             File::open(&config.scenes[index as usize]).unwrap(),
         ))
@@ -250,7 +251,12 @@ impl Scene {
                 models,
                 last_position_model: vec3(0., 0., 0.),
                 model_mat: translation(&(vec3(0., -1., -5.))),
-                camera: Camera::new(vec3(1.0, 1.0, -3.0), vec3(0.0, 0.0, -1.0), mouse_position),
+                camera: Camera::new(
+                    vec3(1.0, 1.0, -3.0),
+                    vec3(0.0, 0.0, -1.0),
+                    viewport_size,
+                    mouse_position,
+                ),
                 projection_mat: perspective(viewport_ratio, (fov).to_radians(), 0.1, 100.0),
 
                 program,
@@ -266,10 +272,15 @@ impl Scene {
         }
     }
 
-    pub fn update_projection(&mut self, viewport_ratio: f32, fov: f32) {
+    pub fn update_projection(&mut self, viewport_size: (f64, f64), fov: f32) {
         self.fov = fov;
-        self.viewport_ratio = viewport_ratio;
-        self.projection_mat = perspective(viewport_ratio, (fov).to_radians(), 0.1, 100.0);
+        self.camera.viewport_size = viewport_size;
+        self.projection_mat = perspective(
+            (viewport_size.0 / viewport_size.1) as f32,
+            (fov).to_radians(),
+            0.1,
+            100.0,
+        );
     }
 
     fn rotation_matrix(theta: Vec3) -> TMat4<f32> {
@@ -398,7 +409,12 @@ impl Scene {
         }
     }
 
-    pub fn init_gl_component(&mut self, gl: &glow::Context, config: &GraphicConfig) {
+    pub fn init_gl_component(
+        &mut self,
+        gl: &glow::Context,
+        config: &GraphicConfig,
+        viewport_size: (f64, f64),
+    ) {
         self.program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
 
         unsafe {
@@ -410,8 +426,10 @@ impl Scene {
         self.camera = Camera::new(
             self.camera.position,
             self.camera.target,
+            viewport_size,
             self.camera.last_mouse_position,
         );
+        self.update_projection(viewport_size, self.fov);
     }
 
     pub fn cleanup(&mut self, gl: &glow::Context) {

@@ -130,7 +130,7 @@ impl GraphicContext {
                                 _ => 0.,
                             };
                             self.program
-                                .update_scenes_projection(viewport_ratio, direction);
+                                .update_scenes_projection(viewport_size.into(), direction);
                         }
                         glutin::event::WindowEvent::KeyboardInput { input, .. } => {
                             match input.virtual_keycode {
