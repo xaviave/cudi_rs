@@ -32,10 +32,10 @@ pub enum MediaSource {
 */
 
 impl MediaSource {
-    pub fn get_media_list(&self, config: &MediaConfig) -> Vec<PathBuf> {
+    pub fn get_media_list(&self) -> Vec<PathBuf> {
         match self {
-            Self::Local(m) => m.get_media_list(&config),
-            Self::DB(m) => m.get_media_list(&config),
+            Self::Local(m) => m.get_media_list(),
+            Self::DB(m) => m.get_media_list(),
         }
     }
 }
@@ -59,11 +59,16 @@ impl LocalMedia {
         }
     }
 
-    pub fn get_media_list(&self, config: &MediaConfig) -> Vec<PathBuf> {
+    pub fn get_media_list(&self) -> Vec<PathBuf> {
         let mut rng = thread_rng();
         let mut x = self.media_paths.clone();
         x.shuffle(&mut rng);
         x
+        // vec![
+        //     PathBuf::from("data/init/loading.jpeg"),
+        //     PathBuf::from("data/init/loading.jpeg"),
+        //     PathBuf::from("data/init/loading.jpeg"),
+        // ]
     }
 }
 
@@ -96,7 +101,7 @@ impl PostgreSQLMedia {
         medias_queue
     }
 
-    pub fn new(config: &MediaConfig) -> Self {
+    pub fn new(config: MediaConfig) -> Self {
         let connection = PgConnection::establish(&config.database_url)
             .unwrap_or_else(|_| panic!("Error connecting to {}", config.database_url));
 
@@ -105,7 +110,7 @@ impl PostgreSQLMedia {
         }
     }
 
-    pub fn get_media_list(&self, config: &MediaConfig) -> Vec<PathBuf> {
+    pub fn get_media_list(&self) -> Vec<PathBuf> {
         self.query_data()
     }
 }

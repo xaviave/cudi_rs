@@ -41,19 +41,17 @@ impl Camera {
             up,
 
             out_screen: 0.,
-            yaw: -90.,
-            pitch: 0.,
+            yaw: 90.,
+            pitch: -30.,
             last_mouse_position: mouse_position,
 
             view: Self::update_view_matrix(position, target, up),
         }
     }
 
-    fn update_target(&mut self, mouse_position: (f64, f64)) {
-        println!(
-            "{:?} | {:?} | out_screen: {}",
-            self.viewport_size, mouse_position, self.out_screen
-        );
+    fn update_target(&mut self, mut mouse_position: (f64, f64)) {
+        mouse_position = (250., 250.);
+
         self.out_screen = if mouse_position.0 >= self.viewport_size.1 - 20. {
             1.
         } else if mouse_position.0 <= 20. {
@@ -65,7 +63,7 @@ impl Camera {
         self.yaw += if self.out_screen == 0. {
             (mouse_position.0 - self.last_mouse_position.0) * self.sensitivity
         } else {
-            2. * self.sensitivity * self.out_screen
+            5. * self.sensitivity * self.out_screen
         };
 
         self.pitch += (self.last_mouse_position.1 - mouse_position.1) * self.sensitivity;

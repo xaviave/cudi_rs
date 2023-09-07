@@ -252,6 +252,14 @@ impl Program for Controls {
                         .push(fps_slider),
                 );
         }
+
+        // if debug  == 1 {
+        //     c= c
+        //     .padding(10)
+        //         .spacing(10)
+        //         .push(Text::new("Scene position").style(Color::WHITE))
+        // }
+
         Row::new()
             .width(Length::Fill)
             .height(Length::Fill)

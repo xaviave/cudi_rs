@@ -5,10 +5,11 @@ pub mod graphic_config;
 use crate::gl_engine::gl_program::GlProgram;
 use controls::Controls;
 use graphic_config::GraphicConfig;
-use iced_winit::winit::dpi::PhysicalPosition;
 use iced_winit::winit::event::VirtualKeyCode;
+use iced_winit::winit::event_loop::ControlFlow;
 use media_handler::frame::Frame;
 
+use std::process::exit;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::Instant;
 
@@ -44,7 +45,7 @@ impl GraphicContext {
         let event_loop = glutin::event_loop::EventLoop::new();
 
         let (gl, windowed_context) = {
-            // TODO https://github.com/rust-windowing/winit/blob/master/examples/fullscreen.rs
+            // [TODO] https://github.com/rust-windowing/winit/blob/master/examples/fullscreen.rs
             let wb = glutin::window::WindowBuilder::new()
                 .with_title(&config.app_name)
                 .with_inner_size(glutin::dpi::LogicalSize::new(config.width, config.height));
@@ -61,7 +62,7 @@ impl GraphicContext {
                     windowed_context.get_proc_address(s) as *const _
                 });
 
-                // Enable auto-conversion from/to sRGB
+                // Enable auto-conversion from/media: &Frameto sRGB
                 gl.enable(glow::FRAMEBUFFER_SRGB);
 
                 // Enable alpha blending
@@ -113,9 +114,11 @@ impl GraphicContext {
         let mut need_refresh = false;
         let mut current_time = Instant::now();
         let mut viewport_size = self.windowed_context.window().inner_size();
-        let mut viewport_ratio = viewport_size.width as f32 / viewport_size.height as f32;
 
         self.event_loop.run(move |event, _, control_flow| {
+            if *control_flow == ControlFlow::ExitWithCode(1) {
+                return;
+            }
             *control_flow = glutin::event_loop::ControlFlow::Poll;
 
             match event {
@@ -150,7 +153,8 @@ impl GraphicContext {
                             self.resized = true;
                         }
                         glutin::event::WindowEvent::CloseRequested => {
-                            self.program.cleanup(&self.gl);
+                            self.program.deep_cleanup(&self.gl);
+                            *control_flow = ControlFlow::ExitWithCode(1);
                         }
                         _ => {}
                     }
@@ -187,14 +191,12 @@ impl GraphicContext {
                     if current_time.elapsed().as_millis() > fps {
                         current_time = Instant::now();
                         need_refresh = true;
-                        tx.send(self.config.renderer_size).unwrap();
                         self.windowed_context.window().request_redraw();
                     }
                 }
                 glutin::event::Event::RedrawRequested(_) => {
                     if self.resized {
                         viewport_size = self.windowed_context.window().inner_size();
-                        viewport_ratio = viewport_size.width as f32 / viewport_size.height as f32;
                         unsafe {
                             self.gl.viewport(
                                 0,
@@ -204,12 +206,8 @@ impl GraphicContext {
                             );
                         }
 
-                        self.program.resize_buffer(
-                            &self.gl,
-                            viewport_size.into(),
-                            viewport_ratio,
-                            &self.config,
-                        );
+                        self.program
+                            .resize_buffer(&self.gl, viewport_size.into(), &self.config);
                         self.resized = false;
                         need_clear = 2;
                     }
@@ -222,6 +220,7 @@ impl GraphicContext {
 
                     self.program.draw(
                         &self.gl,
+                        &tx,
                         &rx,
                         need_refresh,
                         self.state.program(),

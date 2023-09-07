@@ -2,7 +2,7 @@ use image::DynamicImage;
 use image::GenericImageView;
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Frame {
     pub width: u32,
     pub height: u32,
@@ -16,10 +16,11 @@ impl std::fmt::Display for Frame {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "File description:\npath: {}\nsize: {}:{}",
+            "File description:\npath: {}\nsize: {}:{} | {:p}",
             self.path.display(),
             self.width,
-            self.height
+            self.height,
+            self
         )
     }
 }

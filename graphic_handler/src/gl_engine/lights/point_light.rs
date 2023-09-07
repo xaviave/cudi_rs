@@ -20,7 +20,7 @@ impl Attenuation {
             Self {
                 constant: 0.3_f32,
                 linear,
-                exp: 3.0_f32,
+                exp: 1.0_f32,
 
                 constant_loc: gl
                     .get_uniform_location(*program, &(name.clone() + ".attenuation.constant")),
@@ -54,7 +54,7 @@ impl PointLight {
         let base = DirectionalLight::new(gl, program, name.clone() + ".base", 0.9);
         Self {
             light: base,
-            attenuation: Attenuation::new(gl, program, name.clone(), 0.1),
+            attenuation: Attenuation::new(gl, program, name.clone(), 0.5),
             position,
             position_loc: unsafe { gl.get_uniform_location(*program, &(name + ".position")) },
         }

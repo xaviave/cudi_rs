@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 
 use glow::*;
 use iced_glow::glow;
 use iced_winit::winit::event::VirtualKeyCode;
-use nalgebra_glm::Vec3;
 
 use crate::controls::Controls;
 use crate::gl_engine::framebuffer_renderer::FramebufferRenderer;
@@ -63,6 +61,7 @@ impl GlProgram {
     pub fn draw(
         &mut self,
         gl: &glow::Context,
+        tx: &Sender<u8>,
         rx: &Receiver<Frame>,
         need_refresh: bool,
         ux_data: &Controls,
@@ -84,7 +83,15 @@ impl GlProgram {
         for s in &mut self.main_scenes {
             // r.update_scene_data(vec3(rng.gen_range(-1.2..1.2), rng.gen_range(-1.2..1.2), 1.));
             /* optionnal | need to move */
-            s.draw(gl, rx, need_refresh, ux_data, keyboard_data, mouse_position);
+            s.draw(
+                gl,
+                tx,
+                rx,
+                need_refresh,
+                ux_data,
+                keyboard_data,
+                mouse_position,
+            );
         }
         self.framebuffer_renderer.draw(gl);
     }
@@ -106,7 +113,6 @@ impl GlProgram {
         &mut self,
         gl: &glow::Context,
         win_size: (i32, i32),
-        viewport_ratio: f32,
         config: &GraphicConfig,
     ) {
         self.cleanup(gl);
@@ -140,6 +146,14 @@ impl GlProgram {
     pub fn cleanup(&mut self, gl: &glow::Context) {
         for s in &mut self.main_scenes {
             s.cleanup(gl)
+        }
+        self.framebuffer_renderer.cleanup(gl);
+    }
+
+    pub fn deep_cleanup(&mut self, gl: &glow::Context) {
+        println!("deep_cleanup");
+        for s in &mut self.main_scenes {
+            s.deep_cleanup(gl)
         }
         self.framebuffer_renderer.cleanup(gl);
     }

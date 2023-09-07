@@ -4,190 +4,237 @@ pub mod media_source_api;
 pub mod schema;
 pub mod sql_models;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
-use frame::Frame;
-use media_config::MediaConfig;
-use media_source_api::{LocalMedia, MediaSource, PostgreSQLMedia};
+use crate::frame::Frame;
+use crate::media_config::MediaConfig;
+use crate::media_source_api::{LocalMedia, MediaSource, PostgreSQLMedia};
 
 pub struct MediaHandler {
     pub config: Arc<MediaConfig>,
     pub media_source: Arc<MediaSource>,
-    pub path_queue: Vec<PathBuf>,
-    pub media_queue: Vec<Frame>,
 
+    pub path_queue: Vec<PathBuf>,
+
+    timer: Instant,
+    media_asked: Arc<Mutex<i32>>,
     thread_counter: Arc<Mutex<i32>>,
+    thread_handlers: HashMap<Duration, JoinHandle<()>>,
+    // channel to communicate with
     tx_graphic: Sender<Frame>,
     rx_graphic: Receiver<u8>,
-    tx_downloader: Sender<Frame>,
-    rx_downloader: Receiver<Frame>,
+
+    // channel to communicate with
+    tx_threads_cleaner: Sender<Duration>,
+    rx_threads_cleaner: Receiver<Duration>,
+
+    // channel to communicate with
     tx_path_handler: Sender<Vec<PathBuf>>,
     rx_path_handler: Receiver<Vec<PathBuf>>,
 }
 
 impl MediaHandler {
-    fn get_next_media(thread_counter: Arc<Mutex<i32>>, tx: Sender<Frame>, media_path: PathBuf) {
-        thread::spawn(move || {
-            let mut num = thread_counter.lock().unwrap();
-            *num += 1;
-            tx.send(Frame::new(media_path)).unwrap();
-        });
-    }
-
-    fn query_path_queue(
-        tx: Sender<Vec<PathBuf>>,
-        media_source: &Arc<MediaSource>,
-        config: &Arc<MediaConfig>,
-    ) {
-        /*
-        Spawn a thread to request a new media list than will extend the current one
-        */
-        let c = Arc::clone(&config);
-        let ms = Arc::clone(&media_source);
-
-        thread::spawn(move || {
-            tx.send(ms.get_media_list(&*c)).unwrap();
-        });
-    }
-
-    fn get_async_path_queue(&self) -> Vec<PathBuf> {
-        let min_paths = 2 * ((self.config.max_threads as usize) - self.media_queue.len());
-        if self.path_queue.len() < min_paths {
-            Self::query_path_queue(
-                self.tx_path_handler.clone(),
-                &self.media_source,
-                &self.config,
-            );
-        }
-        match self.rx_path_handler.try_recv() {
-            Ok(p) => p,
-            Err(_) => vec![],
-        }
-    }
-
-    fn get_sync_path_queue(
-        tx: Sender<Vec<PathBuf>>,
-        rx: &Receiver<Vec<PathBuf>>,
-        media_source: &Arc<MediaSource>,
-        config: &Arc<MediaConfig>,
-    ) -> Vec<PathBuf> {
-        Self::query_path_queue(tx.clone(), &media_source, config);
-        match rx.recv() {
-            Ok(p) => p,
-            Err(_) => vec![],
-        }
-    }
-
     pub fn new(config: MediaConfig, tx_graphic: Sender<Frame>, rx_graphic: Receiver<u8>) -> Self {
         let media_source = Arc::new(MediaSource::Local(LocalMedia::new(&config)));
         // let mut media_source = MediaSource::DB(PostgreSQLMedia::new(&config));
 
+        let timer = Instant::now();
         let c = Arc::new(config);
-        let thread_counter = Arc::new(Mutex::new(0));
-        let (tx_downloader, rx_downloader) = mpsc::channel();
+        let media_asked = Arc::new(Mutex::new(-2));
+        let thread_counter = Arc::new(Mutex::new(3));
+        let (tx_threads_cleaner, rx_threads_cleaner) = mpsc::channel();
         let (tx_path_handler, rx_path_handler) = mpsc::channel();
 
-        let mut media_queue: Vec<Frame> = vec![];
-        let mut path_queue = vec![];
+        let mut thread_handlers: HashMap<Duration, JoinHandle<()>> = HashMap::new();
+        Self::query_media_path(
+            timer,
+            media_source.clone(),
+            tx_path_handler.clone(),
+            tx_threads_cleaner.clone(),
+            &mut thread_handlers,
+        );
+        let mut path_queue = rx_path_handler.recv().unwrap();
+
         for _ in 0..c.max_threads {
-            if path_queue.len() == 0 {
-                path_queue.extend(Self::get_sync_path_queue(
+            if let Some(p) = path_queue.pop() {
+                Self::process_media(
+                    p,
+                    timer,
+                    tx_graphic.clone(),
+                    tx_threads_cleaner.clone(),
+                    &mut thread_handlers,
+                );
+            } else {
+                match rx_path_handler.try_recv() {
+                    Ok(paths) => {
+                        path_queue.extend(paths);
+                    }
+                    Err(_) => {
+                        print!("Error in Thread query_media_path.");
+                    }
+                };
+                Self::query_media_path(
+                    timer,
+                    media_source.clone(),
                     tx_path_handler.clone(),
-                    &rx_path_handler,
-                    &media_source,
-                    &c,
-                ));
+                    tx_threads_cleaner.clone(),
+                    &mut thread_handlers,
+                );
             }
-            Self::get_next_media(
-                Arc::clone(&thread_counter),
-                tx_downloader.clone(),
-                path_queue.pop().unwrap(),
-            );
-        }
-        for _ in 0..c.max_threads {
-            match rx_downloader.recv() {
-                Ok(f) => {
-                    let mut num = thread_counter.lock().unwrap();
-                    *num -= 1;
-                    media_queue.push(f)
-                }
-                Err(_) => (),
-            };
         }
 
-        path_queue.extend(Self::get_sync_path_queue(
-            tx_path_handler.clone(),
-            &rx_path_handler,
-            &media_source,
-            &c,
-        ));
-        MediaHandler {
+        Self {
             config: c,
             media_source,
-            path_queue,
-            media_queue,
+
+            timer,
+            media_asked,
             thread_counter,
+            thread_handlers,
+
+            path_queue,
+
             tx_graphic,
             rx_graphic,
-            tx_downloader,
-            rx_downloader,
+            tx_threads_cleaner,
+            rx_threads_cleaner,
             tx_path_handler,
             rx_path_handler,
         }
     }
 
+    fn process_media(
+        media_path: PathBuf,
+        timer: Instant,
+        tx_graphic: Sender<Frame>,
+        tx_threads_cleaner: Sender<Duration>,
+        thread_handlers: &mut HashMap<Duration, JoinHandle<()>>,
+    ) {
+        let hashed = timer.elapsed();
+        thread_handlers.insert(
+            hashed,
+            thread::spawn(move || {
+                // open and process media
+                let f = Frame::new(media_path);
+                // add the frame object to the queue
+                tx_graphic.send(f).unwrap();
+                tx_threads_cleaner.send(hashed).unwrap();
+            }),
+        );
+    }
+
+    fn query_media_path(
+        timer: Instant,
+        media_source: Arc<MediaSource>,
+        tx_path_handler: Sender<Vec<PathBuf>>,
+        tx_thread_cleaner: Sender<Duration>,
+        thread_handlers: &mut HashMap<Duration, JoinHandle<()>>,
+    ) {
+        let hashed = timer.elapsed();
+        thread_handlers.insert(
+            hashed,
+            thread::spawn(move || {
+                tx_path_handler.send(media_source.get_media_list()).unwrap();
+                tx_thread_cleaner.send(hashed).unwrap();
+            }),
+        );
+    }
+
     fn handle_signal(&mut self, signal: u8) {
-        for _ in 0..signal {
-            self.tx_graphic
-                .send(self.media_queue.pop().unwrap())
-                .unwrap();
+        let media_asked_arc = self.media_asked.clone();
+        // update the number of media asked, will be the 'size' of the queue
+        let mut media_asked = media_asked_arc.lock().unwrap();
+        *media_asked += signal as i32;
+        println!("received | media_asked: {}", *media_asked);
+    }
+
+    fn handle_media_query(&mut self, max_threads: i32) {
+        let media_asked_arc = self.media_asked.clone();
+        let mut ma = media_asked_arc.lock().unwrap();
+        let thread_counter_arc = self.thread_counter.clone();
+        let mut thread_number = thread_counter_arc.lock().unwrap();
+
+        // launch the max number of threads available
+        while *ma > 0 && *thread_number < max_threads {
+            // try to get a path to launch the media processing
+            if let Some(p) = self.path_queue.pop() {
+                Self::process_media(
+                    p,
+                    self.timer,
+                    self.tx_graphic.clone(),
+                    self.tx_threads_cleaner.clone(),
+                    &mut self.thread_handlers,
+                );
+                *ma -= 1;
+                *thread_number += 1;
+            } else {
+                // no path available, fill again the queue
+                match self.rx_path_handler.try_recv() {
+                    Ok(paths) => {
+                        self.path_queue.extend(paths);
+                        Self::query_media_path(
+                            self.timer,
+                            self.media_source.clone(),
+                            self.tx_path_handler.clone(),
+                            self.tx_threads_cleaner.clone(),
+                            &mut self.thread_handlers,
+                        );
+                        *thread_number += 1;
+                    }
+                    Err(_) => {
+                        print!("[handle_media_query] - Can't find paths");
+                    }
+                };
+            }
+        }
+
+        // println!("[handle_media_query] - media_asked: {media_asked:?} | media_processed: {media_processed:?}");
+        // extend media path to prepare the next query and try to avoid query while processing
+        if *ma as usize > self.path_queue.len() {
+            Self::query_media_path(
+                self.timer,
+                self.media_source.clone(),
+                self.tx_path_handler.clone(),
+                self.tx_threads_cleaner.clone(),
+                &mut self.thread_handlers,
+            );
+            *thread_number += 1;
         }
     }
 
-    fn fill_media_queue(&mut self) {
-        let num = *Arc::clone(&self.thread_counter).lock().unwrap();
-        let media_needed = std::cmp::min(
-            self.path_queue.len(),
-            (self.config.max_threads as usize) - self.media_queue.len(),
-        );
-        // if too many threads or no need of new media
-        if num > self.config.max_threads as i32 || media_needed == 0 {
-            return;
-        }
-
-        for _ in 0..media_needed {
-            let p = self.path_queue.pop().unwrap();
-            Self::get_next_media(
-                Arc::clone(&self.thread_counter),
-                self.tx_downloader.clone(),
-                p,
-            );
-        }
-        for _ in 0..media_needed {
-            match self.rx_downloader.recv() {
-                Ok(f) => {
-                    let mut num = self.thread_counter.lock().unwrap();
-                    *num -= 1;
-                    self.media_queue.push(f)
+    fn clean(&mut self, max_threads: i32) {
+        // println!("[clean]");
+        for _ in 0..max_threads {
+            match self.rx_threads_cleaner.try_recv() {
+                Ok(d) => {
+                    let binding = self.thread_counter.clone();
+                    let mut thread_number = binding.lock().unwrap();
+                    *thread_number -= 1;
+                    self.thread_handlers.remove(&d);
                 }
                 Err(_) => (),
-            };
+            }
         }
     }
 
     pub fn run(&mut self) {
+        let max_threads = self.config.max_threads as i32;
         loop {
-            match self.rx_graphic.try_recv() {
-                Ok(v) => self.handle_signal(v),
-                Err(_) => (),
+            if let Ok(v) = self.rx_graphic.try_recv() {
+                // Kill signal
+                if v == 0 {
+                    // self.hard_clean();
+                    break;
+                }
+                self.handle_signal(v);
             };
-            if self.path_queue.len() < 2 * (self.config.max_threads as usize) {
-                self.path_queue.extend(self.get_async_path_queue());
-            }
-            self.fill_media_queue();
+            self.handle_media_query(max_threads);
+            self.clean(max_threads);
         }
     }
 }

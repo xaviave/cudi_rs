@@ -5,7 +5,7 @@ use iced_glow::glow;
 use iced_glow::Color;
 
 use crate::gl_engine::buffer_util::BufferUtil;
-use crate::gl_engine::texture_util::TextureUtil;
+use crate::gl_engine::textures::texture_util::TextureUtil;
 
 pub struct FramebufferRenderer {
     pub vao: glow::VertexArray,
@@ -117,7 +117,7 @@ impl FramebufferRenderer {
 
     pub fn draw(&self, gl: &glow::Context) {
         unsafe {
-            // 2. Bind default framebuffer, draw a plane and show the texture scene
+            // Bind default framebuffer, draw a plane and show the texture scene
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
             gl.disable(glow::DEPTH_TEST);
             gl.clear(glow::DEPTH_BUFFER_BIT | glow::COLOR_BUFFER_BIT);

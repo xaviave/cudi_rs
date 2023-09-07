@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::mpsc::Receiver,
+    sync::mpsc::{Receiver, Sender},
 };
 
 use glow::*;
@@ -11,18 +11,20 @@ use obj::raw::material::{Material, MtlTextureMap};
 
 use crate::gl_engine::material::CMaterial;
 
-use super::{buffer_renderer::BufferRenderer, gl_error::gl_error, texture_util::TextureUtil};
+use super::gl_error::gl_error;
+use super::textures::texture_util::TextureUtil;
+use super::{buffer_renderer::BufferRenderer, scene::AbstractTexture};
 
 pub struct Model {
     pub raw_vertex_buffer: Vec<f32>,
     pub raw_indices_buffer: Vec<i32>,
 
     pub material_data: CMaterial,
-    ambient_map_path: Option<PathBuf>,
-    diffuse_map_path: Option<PathBuf>,
-    specular_map_path: Option<PathBuf>,
+    pub ambient_map_path: Option<PathBuf>,
+    pub diffuse_map_path: Option<PathBuf>,
+    pub specular_map_path: Option<PathBuf>,
     // normal map
-    bump_map_path: Option<PathBuf>,
+    pub bump_map_path: Option<PathBuf>,
 
     pub update_media: bool,
     pub gl_buffer: BufferRenderer,
@@ -62,34 +64,30 @@ impl Model {
         }
     }
 
-    // fn set_media_texture(&mut self, gl: &glow::Context, rx: &Receiver<Frame>, need_refresh: bool) {
-    //     if need_refresh && self.update_media {
-    //         let new_media = match rx.recv() {
-    //             Ok(f) => Some(f),
-    //             Err(_) => None,
-    //         };
-    //         if let Some(m) = new_media {
-    //             // self.model.texture_ratio = m.ratio;
-    //             Self::generate_texture(gl, self.texture, &m);
-    //         }
-    //         unsafe {
-    //             gl.bind_texture(glow::TEXTURE_2D, Some(self.texture));
-    //         }
-    //     }
-    // }
-
     fn bind_textures(
         &mut self,
         gl: &glow::Context,
         program: glow::NativeProgram,
-        textures: &HashMap<PathBuf, Option<glow::NativeTexture>>,
+        tx: &Sender<u8>,
+        rx: &Receiver<Frame>,
+        textures: &HashMap<PathBuf, AbstractTexture>,
     ) {
         let activate_texture =
             |map_path: &Option<PathBuf>, i: u32, texture_name: &str| match map_path {
                 Some(t) => match textures.get(t) {
-                    Some(&review) => unsafe {
+                    Some(review) => unsafe {
                         gl.active_texture(glow::TEXTURE0 + i);
-                        gl.bind_texture(glow::TEXTURE_2D, review);
+                        gl.bind_texture(
+                            glow::TEXTURE_2D,
+                            match review {
+                                AbstractTexture::cudi(mut x) => {
+                                    tx.send(1).unwrap();
+                                    x.update_media(gl, tx, rx, true, true);
+                                    x.texture_ref
+                                }
+                                AbstractTexture::texture(x) => x.texture_ref,
+                            },
+                        );
                         gl.uniform_1_i32(
                             gl.get_uniform_location(program, texture_name).as_ref(),
                             i as i32,
@@ -114,16 +112,16 @@ impl Model {
         &mut self,
         gl: &glow::Context,
         program: glow::NativeProgram,
+        tx: &Sender<u8>,
         rx: &Receiver<Frame>,
-        textures: &HashMap<PathBuf, Option<glow::NativeTexture>>,
+        textures: &HashMap<PathBuf, AbstractTexture>,
     ) {
-        // self.set_media_texture(gl, rx, need_refresh);
         self.material_data.update_material(gl, program);
 
         unsafe {
             // gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
             gl.bind_vertex_array(Some(self.gl_buffer.vao));
-            self.bind_textures(gl, program, textures);
+            // self.bind_textures(gl, program, tx, rx, textures);
 
             gl.draw_elements(
                 glow::TRIANGLES,

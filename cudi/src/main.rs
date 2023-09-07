@@ -15,11 +15,29 @@ fn main() {
 
     let media_config = MediaConfig::new("confs/media.yaml");
     let mut media_handler = MediaHandler::new(media_config, tx_mg, rx_gm);
-    thread::spawn(move || {
+    let handler = thread::spawn(move || {
         media_handler.run();
     });
 
+    // let _ = tx_gm.send(1);
+
+    // let mut r = 0;
+    // while r < 2 {
+    //     let _ = tx_gm.send(1);
+
+    //     if let Ok(new_media) = rx_mg.recv() {
+    //         r += 1;
+    //         println!(
+    //             "Received: {r:?}\n{}\n___________________________\n",
+    //             new_media
+    //         );
+    //     }
+    // }
+
     let graphic_config = GraphicConfig::new("confs/graphic.yaml");
     let g = GraphicContext::new(graphic_config);
-    g.launch_graphic(tx_gm, rx_mg);
+    g.launch_graphic(tx_gm.clone(), rx_mg);
+
+    let _ = tx_gm.send(0);
+    handler.join().unwrap();
 }

@@ -2,7 +2,7 @@ use glow::*;
 use iced_glow::glow;
 use media_handler::frame::Frame;
 
-use super::gl_error::gl_error;
+use crate::gl_engine::gl_error::gl_error;
 
 pub trait TextureUtil {
     fn init_texture(gl: &glow::Context) -> NativeTexture {
@@ -42,6 +42,25 @@ pub trait TextureUtil {
             );
             gl.generate_mipmap(glow::TEXTURE_2D);
             gl_error(gl, String::from("[generate_texture]"));
+        }
+    }
+
+    fn update_texture(gl: &glow::Context, texture: NativeTexture, media: &Frame) {
+        unsafe {
+            gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+            gl.tex_sub_image_2d(
+                glow::TEXTURE_2D,
+                0,
+                RGBA as i32,
+                media.width as i32,
+                media.height as i32,
+                0,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                glow::PixelUnpackData::Slice(&media.get_raw_image()),
+            );
+            gl.generate_mipmap(glow::TEXTURE_2D);
+            gl_error(gl, String::from("[update_texture]"));
         }
     }
 }

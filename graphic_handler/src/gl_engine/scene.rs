@@ -5,6 +5,7 @@ use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 use std::time::Instant;
 
 use glow::*;
@@ -28,13 +29,20 @@ use nalgebra_glm::{
 use super::camera::Camera;
 use super::lights::point_light::PointLight;
 use super::lights::spot_light::SpotLight;
-use super::texture_util::TextureUtil;
+use super::textures::cudi::Cudi;
+use super::textures::texture::Texture;
+use super::textures::texture_util::TextureUtil;
+
+#[derive(Copy, Clone)]
+pub enum AbstractTexture {
+    cudi(Cudi),
+    texture(Texture),
+}
 
 pub struct Scene {
     // metadata
     time: Instant,
     pub fov: f32,
-    viewport_ratio: f32,
     update_media: bool,
 
     // fragment shader
@@ -59,7 +67,7 @@ pub struct Scene {
     spot_light_number_loc: Option<NativeUniformLocation>,
     point_light_number_loc: Option<NativeUniformLocation>,
 
-    textures: HashMap<PathBuf, Option<glow::NativeTexture>>,
+    textures: HashMap<PathBuf, AbstractTexture>,
 }
 impl BufferUtil for Scene {}
 impl TextureUtil for Scene {}
@@ -137,14 +145,8 @@ impl Scene {
         gl: &glow::Context,
         raw_material: &RawMtl,
         mtl_path: &Path,
-    ) -> HashMap<PathBuf, Option<glow::NativeTexture>> {
-        let file_to_tex = |tex_file: PathBuf| -> Option<glow::NativeTexture> {
-            let texture = Self::init_texture(gl);
-            let media = Frame::new(tex_file);
-            Self::generate_texture(gl, texture, &media);
-            Some(texture)
-        };
-
+        loading_media: &Frame,
+    ) -> HashMap<PathBuf, AbstractTexture> {
         let textures_paths: Vec<_> = raw_material
             .materials
             .values()
@@ -168,7 +170,17 @@ impl Scene {
         let mut map_data = |texture_name: PathBuf| {
             match textures_cache.entry(texture_name.clone()) {
                 Entry::Vacant(entry) => {
-                    let x = file_to_tex(texture_name);
+                    let x = if texture_name
+                        .clone()
+                        .into_os_string()
+                        .into_string()
+                        .unwrap()
+                        .contains("cudi")
+                    {
+                        AbstractTexture::cudi(Cudi::new(gl, loading_media))
+                    } else {
+                        AbstractTexture::texture(Texture::new(gl, texture_name))
+                    };
                     entry.insert(x);
                     x
                 }
@@ -211,14 +223,13 @@ impl Scene {
         let program = Self::create_program(gl, &config.vertex_path, &config.fragment_path);
 
         let models = Self::parse_model(gl, program, raw_obj, &raw_material, mtl_path, update_media);
-        let textures = Self::parse_textures(gl, &raw_material, mtl_path);
+        let textures = Self::parse_textures(gl, &raw_material, mtl_path, &config.loading_media);
 
         unsafe {
             gl.use_program(Some(program));
             Self {
                 time: Instant::now(),
                 fov,
-                viewport_ratio,
                 update_media,
 
                 directional_light_data: DirectionalLight::new(
@@ -233,26 +244,30 @@ impl Scene {
                             gl,
                             &program,
                             format!("spot_lights[{}]", i),
-                            vec3(0., 2., 2. * i as f32),
+                            vec3(0., 3. * i as f32, 2. * i as f32),
                         )
                     })
                     .collect(),
-                point_light_data: (0..1)
-                    .map(|i| {
-                        PointLight::new(
-                            gl,
-                            &program,
-                            format!("point_lights[{}]", i),
-                            vec3(0., 2., -2.),
-                        )
-                    })
-                    .collect(),
+                point_light_data: vec![
+                    PointLight::new(
+                        gl,
+                        &program,
+                        format!("point_lights[{}]", 0),
+                        vec3(0.0, 3.0, -5.0),
+                    ),
+                    PointLight::new(
+                        gl,
+                        &program,
+                        format!("point_lights[{}]", 1),
+                        vec3(0., -1., -1.),
+                    ),
+                ],
 
                 models,
                 last_position_model: vec3(0., 0., 0.),
-                model_mat: translation(&(vec3(0., -1., -5.))),
+                model_mat: translation(&(vec3(0., -1., 0.))),
                 camera: Camera::new(
-                    vec3(1.0, 1.0, -3.0),
+                    vec3(0.0, 3.0, -5.0),
                     vec3(0.0, 0.0, -1.0),
                     viewport_size,
                     mouse_position,
@@ -391,6 +406,7 @@ impl Scene {
     pub fn draw(
         &mut self,
         gl: &glow::Context,
+        tx: &Sender<u8>,
         rx: &Receiver<Frame>,
         need_refresh: bool,
         ux_data: &Controls,
@@ -405,7 +421,7 @@ impl Scene {
         self.update_scene_data(gl, ux_data);
         self.update_matrix(gl, ux_data, keyboard_data, mouse_position);
         for m in &mut self.models {
-            m.draw(gl, self.program, rx, &self.textures);
+            m.draw(gl, self.program, tx, rx, &self.textures);
         }
     }
 
@@ -439,5 +455,26 @@ impl Scene {
         unsafe {
             gl.delete_program(self.program);
         }
+    }
+
+    pub fn deep_cleanup(&mut self, gl: &glow::Context) {
+        let clean_texture = |map_path: &Option<PathBuf>| match map_path {
+            Some(t) => match self.textures.get(t) {
+                Some(review) => match review {
+                    AbstractTexture::cudi(mut x) => x.clean(gl),
+                    AbstractTexture::texture(mut x) => x.clean(gl),
+                },
+                None => (),
+            },
+            _ => (),
+        };
+
+        for m in &mut self.models {
+            clean_texture(&m.ambient_map_path);
+            clean_texture(&m.diffuse_map_path);
+            clean_texture(&m.specular_map_path);
+            clean_texture(&m.bump_map_path);
+        }
+        self.cleanup(gl);
     }
 }

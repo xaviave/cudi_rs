@@ -120,7 +120,7 @@ vec4 calc_point_light(PointLight l, vec3 normal)
 vec4 calc_spot_light(SpotLight l, vec3 normal)
 {
     vec3 light_to_pixel = normalize(FragPos - l.base.position);
-	l.base.base.direction = vec3(cos(time * 0.5) * 2., -1., -1.);
+	l.base.base.direction = vec3(cos(time * 0.05) * 2., -1., -1.);
     float spot_factor = dot(light_to_pixel, l.base.base.direction);
     if (spot_factor > l.cut_off)
 	{
